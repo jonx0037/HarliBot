@@ -4,8 +4,8 @@ Description: HarliBot Embedding Service - Lambda + API Gateway
 
 Globals:
   Function:
-    Timeout: 60
-    MemorySize: 4096
+    Timeout: 90
+    MemorySize: 3008
     Environment:
       Variables:
         MODEL_NAME: sentence-transformers/paraphrase-multilingual-mpnet-base-v2
@@ -21,8 +21,8 @@ Resources:
       ImageUri: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/harlibot-embedding:latest
       Architectures:
         - x86_64
-      Timeout: 60
-      MemorySize: 4096
+      Timeout: 90
+      MemorySize: 3008
       EphemeralStorage:
         Size: 2048
       Events:
@@ -61,7 +61,7 @@ Resources:
         AllowOrigin: "'*'"
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
         AllowMethods: "'GET,POST,OPTIONS'"
-        AllowCredentials: true
+        AllowCredentials: false
 
   # CloudWatch Log Group
   EmbeddingFunctionLogGroup:
@@ -69,6 +69,33 @@ Resources:
     Properties:
       LogGroupName: !Sub /aws/lambda/${EmbeddingFunction}
       RetentionInDays: 7
+
+  # EventBridge Rule to keep Lambda warm (prevent cold starts)
+  LambdaWarmingRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: harlibot-embedding-warmer
+      Description: Pings Lambda every 5 minutes to keep it warm
+      ScheduleExpression: rate(5 minutes)
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt EmbeddingFunction.Arn
+          Id: EmbeddingFunctionTarget
+          Input: |
+            {
+              "httpMethod": "GET",
+              "path": "/health",
+              "headers": {"X-Warming-Ping": "true"}
+            }
+
+  # Permission for EventBridge to invoke Lambda
+  LambdaWarmingPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref EmbeddingFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt LambdaWarmingRule.Arn
 
 Outputs:
   ApiEndpoint:

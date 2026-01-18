@@ -20,8 +20,13 @@ COPY requirements-lambda.txt .
 RUN pip install --no-cache-dir -r requirements-lambda.txt
 
 # Pre-download the sentence-transformers model during build
-# This reduces cold start time significantly
-RUN python -c "from sentence_transformers import SentenceTransformer; \
+# Download to a location that will be included in the image
+ENV HF_HOME=/var/task/.cache/huggingface
+ENV TRANSFORMERS_CACHE=/var/task/.cache/transformers
+ENV SENTENCE_TRANSFORMERS_HOME=/var/task/.cache/sentence_transformers
+
+RUN mkdir -p /var/task/.cache && \
+    python -c "from sentence_transformers import SentenceTransformer; \
     model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-mpnet-base-v2'); \
     print(f'Model downloaded, dimension: {model.get_sentence_embedding_dimension()}')"
 

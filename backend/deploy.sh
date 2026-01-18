@@ -65,10 +65,8 @@ echo -e "${GREEN}✓ Docker authenticated${NC}"
 
 # Step 4: Build Docker image
 echo -e "\n${YELLOW}Step 4: Building Docker image...${NC}"
-cd backend
-docker build -f Dockerfile.lambda -t ${ECR_REPO_NAME}:${IMAGE_TAG} .
+docker build -f Dockerfile.lambda -t ${ECR_REPO_NAME}:${IMAGE_TAG} --platform linux/amd64 --provenance=false .
 echo -e "${GREEN}✓ Docker image built${NC}"
-cd ..
 
 # Step 5: Tag and push to ECR
 echo -e "\n${YELLOW}Step 5: Pushing image to ECR...${NC}"
@@ -77,16 +75,11 @@ docker tag ${ECR_REPO_NAME}:${IMAGE_TAG} ${ECR_IMAGE_URI}
 docker push ${ECR_IMAGE_URI}
 echo -e "${GREEN}✓ Image pushed to ECR${NC}"
 
-# Step 6: Build SAM application
-echo -e "\n${YELLOW}Step 6: Building SAM application...${NC}"
-sam build
-echo -e "${GREEN}✓ SAM build complete${NC}"
+# Step 6: Deploy with SAM (skip build - using pre-built ECR image)
+echo -e "\n${YELLOW}Step 6: Deploying to AWS Lambda...${NC}"
+sam deploy --template ../template.yaml --no-confirm-changeset
 
-# Step 7: Deploy with SAM
-echo -e "\n${YELLOW}Step 7: Deploying to AWS Lambda...${NC}"
-sam deploy --no-confirm-changeset
-
-# Step 8: Get API endpoint
+# Step 7: Get API endpoint
 echo -e "\n${YELLOW}Step 8: Retrieving API endpoint...${NC}"
 API_ENDPOINT=$(aws cloudformation describe-stacks \
     --stack-name ${STACK_NAME} \

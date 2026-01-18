@@ -3,6 +3,9 @@ AWS Lambda handler for HarliBot Embedding Service
 
 This handler wraps the sentence-transformers model for serverless deployment.
 Optimized for Lambda container runtime with API Gateway integration.
+
+The model is pre-downloaded during Docker build to /var/task/.cache to avoid
+runtime downloads and read-only filesystem issues.
 """
 
 import json
@@ -19,16 +22,35 @@ logger.setLevel(logging.INFO)
 # Global model instance (persists across warm invocations)
 MODEL_NAME = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
 model: Optional[SentenceTransformer] = None
+model_loaded: bool = False
+model_dimension: int = 768  # Default dimension for this model
 
 
 def load_model():
     """Load the embedding model (called on cold start)"""
-    global model
+    global model, model_loaded, model_dimension
     if model is None:
         logger.info(f"Cold start: Loading model {MODEL_NAME}")
-        model = SentenceTransformer(MODEL_NAME)
-        logger.info(f"Model loaded. Dimension: {model.get_sentence_embedding_dimension()}")
+        try:
+            model = SentenceTransformer(MODEL_NAME)
+            model_dimension = model.get_sentence_embedding_dimension()
+            model_loaded = True
+            logger.info(f"Model loaded successfully. Dimension: {model_dimension}")
+        except Exception as e:
+            logger.error(f"Failed to load model: {str(e)}", exc_info=True)
+            model_loaded = False
+            raise
     return model
+
+
+# Preload model at module initialization (outside handler)
+# This happens during Lambda cold start, before the first request
+try:
+    logger.info("Preloading model at Lambda initialization...")
+    load_model()
+    logger.info("Model preloaded successfully")
+except Exception as e:
+    logger.error(f"Failed to preload model: {str(e)}")
 
 
 def create_cors_headers(origin: str = "*") -> Dict[str, str]:
@@ -117,19 +139,40 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
 
 def handle_health(cors_headers: Dict[str, str]) -> Dict[str, Any]:
-    """Handle health check requests"""
+    """
+    Handle health check requests
+    
+    Lightweight check that doesn't load the model - just reports status.
+    Model is preloaded at Lambda initialization.
+    """
     try:
-        mdl = load_model()
-        return {
-            "statusCode": 200,
-            "headers": {**cors_headers, "Content-Type": "application/json"},
-            "body": json.dumps({
-                "status": "healthy",
-                "service": "HarliBot Embedding Service",
-                "model": MODEL_NAME,
-                "dimension": mdl.get_sentence_embedding_dimension()
-            })
-        }
+        # Check if model is loaded (don't trigger loading)
+        if model_loaded and model is not None:
+            return {
+                "statusCode": 200,
+                "headers": {**cors_headers, "Content-Type": "application/json"},
+                "body": json.dumps({
+                    "status": "healthy",
+                    "service": "HarliBot Embedding Service",
+                    "model": MODEL_NAME,
+                    "model_loaded": True,
+                    "dimension": model_dimension
+                })
+            }
+        else:
+            # Model not loaded yet (shouldn't happen with preloading)
+            logger.warning("Health check called but model not loaded")
+            return {
+                "statusCode": 503,
+                "headers": {**cors_headers, "Content-Type": "application/json"},
+                "body": json.dumps({
+                    "status": "initializing",
+                    "service": "HarliBot Embedding Service",
+                    "model": MODEL_NAME,
+                    "model_loaded": False,
+                    "message": "Model is still loading"
+                })
+            }
     except Exception as e:
         logger.error(f"Health check failed: {str(e)}")
         return {

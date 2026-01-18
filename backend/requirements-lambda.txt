@@ -1,11 +1,15 @@
 # Lambda-specific requirements
-# Lightweight dependencies for Lambda container
+# Using specific versions with pre-built wheels to avoid compilation issues
 
-# Core dependencies
-sentence-transformers>=3.0.0
-torch>=2.0.0,<2.5.0
-transformers>=4.30.0
-numpy>=1.24.0,<2.0.0
+# Core dependencies - install numpy first
+numpy==1.26.4
 
-# Optimize for CPU-only (smaller size, Lambda doesn't have GPU)
-# Note: torch wheel will automatically use CPU version in Lambda container
+# Scipy must be compatible with numpy 1.26.4 and have pre-built wheels
+scipy==1.13.1
+
+# ML dependencies
+sentence-transformers==3.0.1
+torch==2.4.1
+transformers==4.44.2
+scikit-learn==1.5.2
+
