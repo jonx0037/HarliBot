@@ -125,6 +125,33 @@ Navigate to `http://localhost:3000`
 
 ## Deployment
 
+### AWS Lambda (Production)
+
+Deploy the embedding service to AWS Lambda for production use:
+
+```bash
+# One-time setup: Install AWS SAM CLI
+brew install aws-sam-cli
+
+# Configure AWS credentials
+aws configure  # Use account 656008069605, region us-east-1
+
+# Deploy
+cd backend
+./deploy.sh
+```
+
+After deployment:
+1. Copy the API endpoint URL from the output
+2. Update `EMBEDDING_SERVICE_URL` in Vercel environment variables
+3. Redeploy frontend to activate chat functionality
+
+**See**: [docs/lambda-deployment.md](docs/lambda-deployment.md) for detailed instructions.
+
+---
+
+### GitHub Pages / Vercel (Frontend Only)
+
 See [deployment documentation](docs/deployment.md) for AWS deployment instructions.
 
 ## License

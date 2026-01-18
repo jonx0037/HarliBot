@@ -1,0 +1,90 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: HarliBot Embedding Service - Lambda + API Gateway
+
+Globals:
+  Function:
+    Timeout: 60
+    MemorySize: 4096
+    Environment:
+      Variables:
+        MODEL_NAME: sentence-transformers/paraphrase-multilingual-mpnet-base-v2
+        LOG_LEVEL: INFO
+
+Resources:
+  # Lambda Function
+  EmbeddingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: harlibot-embedding-service
+      PackageType: Image
+      ImageUri: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/harlibot-embedding:latest
+      Architectures:
+        - x86_64
+      Timeout: 60
+      MemorySize: 4096
+      EphemeralStorage:
+        Size: 2048
+      Events:
+        HealthCheck:
+          Type: Api
+          Properties:
+            Path: /health
+            Method: get
+            RestApiId: !Ref EmbeddingApi
+        EmbedPost:
+          Type: Api
+          Properties:
+            Path: /embed
+            Method: post
+            RestApiId: !Ref EmbeddingApi
+        CorsOptions:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: options
+            RestApiId: !Ref EmbeddingApi
+      Policies:
+        - CloudWatchLogsFullAccess
+    Metadata:
+      DockerTag: latest
+      DockerContext: ./backend
+      Dockerfile: Dockerfile.lambda
+
+  # API Gateway
+  EmbeddingApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: harlibot-embedding-api
+      StageName: prod
+      Cors:
+        AllowOrigin: "'*'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowCredentials: true
+
+  # CloudWatch Log Group
+  EmbeddingFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${EmbeddingFunction}
+      RetentionInDays: 7
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub https://${EmbeddingApi}.execute-api.${AWS::Region}.amazonaws.com/prod
+    Export:
+      Name: HarliBotEmbeddingApiEndpoint
+  
+  FunctionArn:
+    Description: Lambda function ARN
+    Value: !GetAtt EmbeddingFunction.Arn
+    Export:
+      Name: HarliBotEmbeddingFunctionArn
+  
+  ApiId:
+    Description: API Gateway ID
+    Value: !Ref EmbeddingApi
+    Export:
+      Name: HarliBotEmbeddingApiId

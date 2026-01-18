@@ -1,0 +1,16 @@
+version = 0.1
+
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "harlibot-embedding-service"
+s3_prefix = "harlibot-embedding-service"
+region = "us-east-1"
+capabilities = "CAPABILITY_IAM"
+image_repositories = ["EmbeddingFunction=656008069605.dkr.ecr.us-east-1.amazonaws.com/harlibot-embedding"]
+confirm_changeset = true
+resolve_s3 = true
+
+[default.build]
+[default.build.parameters]
+use_container = true
