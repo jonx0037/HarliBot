@@ -1,0 +1,31 @@
+{
+    "name": "harlibot-data-pipeline",
+    "version": "1.0.0",
+    "description": "Data pipeline scripts for HarliBot knowledge base",
+    "type": "module",
+    "scripts": {
+        "test-chroma": "tsx test-chroma.ts",
+        "scrape": "tsx scraper.ts",
+        "seed-demo": "tsx seed-demo-content.ts",
+        "process": "tsx processor.ts",
+        "embed": "tsx embedder.ts",
+        "index": "tsx indexer.ts",
+        "pipeline": "npm run scrape && npm run process && npm run embed && npm run index",
+        "demo-pipeline": "npm run seed-demo && npm run process && npm run embed && npm run index"
+    },
+    "dependencies": {
+        "crawlee": "^3.7.2",
+        "playwright": "^1.41.1",
+        "cheerio": "^1.0.0-rc.12",
+        "chromadb": "^1.8.1",
+        "dotenv": "^16.4.1",
+        "langchain": "^0.1.11",
+        "uuid": "^9.0.1"
+    },
+    "devDependencies": {
+        "@types/node": "^20.11.5",
+        "@types/uuid": "^9.0.7",
+        "tsx": "^4.7.0",
+        "typescript": "^5.3.3"
+    }
+}

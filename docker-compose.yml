@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  # Python embedding service
+  embedding-service:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    volumes:
+      - ./backend:/app
+    restart: unless-stopped
+
+networks:
+  default:
+    name: harlibot-network
