@@ -21,20 +21,21 @@ export interface BatchEmbeddingResponse {
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
     try {
-        const response = await fetch(`${EMBEDDING_SERVICE_URL}/embed/single`, {
+        // Use the batch endpoint with a single text
+        const response = await fetch(`${EMBEDDING_SERVICE_URL}/embed`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ text }),
+            body: JSON.stringify({ texts: [text], normalize: true }),
         });
 
         if (!response.ok) {
             throw new Error(`Embedding service error: ${response.statusText}`);
         }
 
-        const data: EmbeddingResponse = await response.json();
-        return data.embedding;
+        const data: BatchEmbeddingResponse = await response.json();
+        return data.embeddings[0];
     } catch (error) {
         console.error('Failed to generate embedding:', error);
         throw new Error('Embedding service unavailable');
