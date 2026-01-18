@@ -5,6 +5,7 @@ const CHROMADB_URL = process.env.CHROMADB_URL || 'http://localhost:8001';
 const CHROMADB_COLLECTION = process.env.CHROMADB_COLLECTION || 'harlingen_city_content';
 const CHROMADB_TENANT = process.env.CHROMADB_TENANT || 'default_tenant';
 const CHROMADB_DATABASE = process.env.CHROMADB_DATABASE || 'default_database';
+const CHROMADB_API_KEY = process.env.CHROMADB_API_KEY;
 
 // Cache the collection ID
 let collectionIdCache: string | null = null;
@@ -19,7 +20,16 @@ async function getCollectionId(): Promise<string> {
 
     try {
         const url = `${CHROMADB_URL}/api/v2/tenants/${CHROMADB_TENANT}/databases/${CHROMADB_DATABASE}/collections`;
-        const response = await fetch(url);
+        const headers: HeadersInit = {
+            'Content-Type': 'application/json',
+        };
+
+        // Add API key if available (required for ChromaDB Cloud)
+        if (CHROMADB_API_KEY) {
+            headers['Authorization'] = `Bearer ${CHROMADB_API_KEY}`;
+        }
+
+        const response = await fetch(url, { headers });
 
         if (!response.ok) {
             throw new Error(`Failed to list collections: ${response.statusText}`);
@@ -69,11 +79,18 @@ export async function searchSimilarChunks(
         // ChromaDB v2 API uses /query endpoint (not /search)
         const url = `${CHROMADB_URL}/api/v2/tenants/${CHROMADB_TENANT}/databases/${CHROMADB_DATABASE}/collections/${collectionId}/query`;
 
+        const headers: HeadersInit = {
+            'Content-Type': 'application/json',
+        };
+
+        // Add API key if available (required for ChromaDB Cloud)
+        if (CHROMADB_API_KEY) {
+            headers['Authorization'] = `Bearer ${CHROMADB_API_KEY}`;
+        }
+
         const response = await fetch(url, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers,
             body: JSON.stringify({
                 query_embeddings: [embedding], // v2 API expects array of embeddings
                 n_results: topK,
@@ -132,7 +149,16 @@ export async function getCollectionStats() {
         const collectionId = await getCollectionId();
         const url = `${CHROMADB_URL}/api/v2/tenants/${CHROMADB_TENANT}/databases/${CHROMADB_DATABASE}/collections/${collectionId}/count`;
 
-        const response = await fetch(url);
+        const headers: HeadersInit = {
+            'Content-Type': 'application/json',
+        };
+
+        // Add API key if available (required for ChromaDB Cloud)
+        if (CHROMADB_API_KEY) {
+            headers['Authorization'] = `Bearer ${CHROMADB_API_KEY}`;
+        }
+
+        const response = await fetch(url, { headers });
 
         if (!response.ok) {
             throw new Error(`Failed to get collection stats: ${response.statusText}`);
