@@ -1,8 +1,8 @@
 """
 AWS Lambda handler for HarliBot Embedding Service
 
-This handler uses Cohere's Embed Multilingual v2.0 API to match
-ChromaDB Cloud's embedding model (768 dimensions).
+This handler uses Cohere's Embed Multilingual v3.0 API to match
+ChromaDB Cloud's embedding model (1024 dimensions).
 
 Optimized for Lambda runtime with API Gateway integration.
 """
@@ -19,8 +19,8 @@ logger.setLevel(logging.INFO)
 
 # Cohere configuration
 COHERE_API_KEY = os.environ.get("COHERE_API_KEY")
-MODEL_NAME = "embed-multilingual-v2.0"
-MODEL_DIMENSION = 768
+MODEL_NAME = "embed-multilingual-v3.0"
+MODEL_DIMENSION = 1024
 
 # Global Cohere client (persists across warm invocations)
 cohere_client = None
@@ -223,7 +223,7 @@ def handle_embed(event: Dict[str, Any], cors_headers: Dict[str, str]) -> Dict[st
         response = client.embed(
             texts=texts,
             model=MODEL_NAME,
-            input_type="search_query",  # Optimized for search/retrieval
+            input_type="search_query",  # For user queries (documents use search_document)
             truncate="END"  # Truncate long texts from the end
         )
         
