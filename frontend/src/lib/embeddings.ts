@@ -1,8 +1,9 @@
 /**
- * Embedding generation using internal API route
+ * Embedding generation using internal API route or direct Lambda call
  * 
- * This module calls the server-side /api/embeddings route,
- * which securely proxies requests to the AWS Lambda service.
+ * This module intelligently routes embedding requests:
+ * - Client-side: calls /api/embeddings proxy
+ * - Server-side: calls Lambda directly (avoids relative URL issues on Vercel)
  */
 
 export interface EmbeddingResponse {
@@ -12,18 +13,64 @@ export interface EmbeddingResponse {
 }
 
 /**
- * Generate embedding for a text query using internal API
+ * Check if we're running on the server
+ */
+function isServer(): boolean {
+    return typeof window === 'undefined';
+}
+
+/**
+ * Generate embedding by calling Lambda directly (server-side only)
+ */
+async function generateEmbeddingDirect(text: string): Promise<number[]> {
+    const LAMBDA_ENDPOINT = process.env.EMBEDDING_SERVICE_URL;
+
+    if (!LAMBDA_ENDPOINT) {
+        throw new Error('EMBEDDING_SERVICE_URL not configured');
+    }
+
+    console.log('[Embeddings] Calling Lambda directly...');
+
+    const response = await fetch(`${LAMBDA_ENDPOINT}/embed`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ texts: [text] }),
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[Embeddings] Lambda error (${response.status}):`, errorText);
+        throw new Error(`Embedding service error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.embeddings || !Array.isArray(data.embeddings) || data.embeddings.length === 0) {
+        throw new Error('Invalid embedding response from Lambda');
+    }
+
+    console.log(`[Embeddings] Generated ${data.dimension}-dimensional embedding`);
+    return data.embeddings[0];
+}
+
+/**
+ * Generate embedding for a text query
+ * Routes to Lambda directly on server, or via API proxy on client
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
-    // Create abort controller for timeout
+    // Server-side: call Lambda directly to avoid relative URL issues
+    if (isServer()) {
+        return generateEmbeddingDirect(text);
+    }
+
+    // Client-side: use internal API proxy
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
     try {
-        // Always use relative URL for internal API calls
-        // This works in both browser and server contexts
         const url = '/api/embeddings';
-
         console.log('[Embeddings] Calling internal API:', url);
 
         const response = await fetch(url, {
