@@ -3,6 +3,11 @@
 .env.production
 .env*.local
 
+# Vercel auto-generated files (should not be committed)
+.env.vercel
+.env.vercel.production
+.env*.vercel
+
 # Dependencies
 node_modules/
 __pycache__/
@@ -56,3 +61,7 @@ archive/
 
 # Scraped website documentation (can be regenerated)
 docs/HarlingenTX_site_download/
+
+# Backup archives
+*.tar.gz
+*.zip

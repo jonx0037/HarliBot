@@ -12,26 +12,17 @@ export interface EmbeddingResponse {
 }
 
 /**
- * Get the base URL for API calls
- * Works in both browser and server contexts
- */
-function getBaseUrl(): string {
-    // Browser context
-    if (typeof window !== 'undefined') {
-        return '';
-    }
-
-    // Server context - use environment variable or default
-    return process.env.NEXT_PUBLIC_BASE_URL || 'https://harli-bot.vercel.app';
-}
-
-/**
  * Generate embedding for a text query using internal API
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
     try {
-        const baseUrl = getBaseUrl();
-        const url = `${baseUrl}/api/embeddings`;
+        // Always use relative URL for internal API calls
+        // This works in both browser and server contexts
+        const url = '/api/embeddings';
 
         console.log('[Embeddings] Calling internal API:', url);
 
@@ -41,7 +32,10 @@ export async function generateEmbedding(text: string): Promise<number[]> {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({ text }),
+            signal: controller.signal,
         });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
@@ -58,6 +52,14 @@ export async function generateEmbedding(text: string): Promise<number[]> {
         return data.embedding;
 
     } catch (error) {
+        clearTimeout(timeoutId);
+
+        // Handle timeout specifically
+        if (error instanceof Error && error.name === 'AbortError') {
+            console.error('[Embeddings] Request timeout after 5 seconds');
+            throw new Error('Embedding service timeout - please try again');
+        }
+
         console.error('[Embeddings] Error generating embedding:', error);
         throw error;
     }

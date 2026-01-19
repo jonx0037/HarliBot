@@ -88,53 +88,72 @@ export async function searchSimilarChunks(
             headers['Authorization'] = `Bearer ${CHROMADB_API_KEY}`;
         }
 
-        const response = await fetch(url, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-                query_embeddings: [embedding], // v2 API expects array of embeddings
-                n_results: topK,
-                where: { language }, // Filter by language
-            }),
-        });
+        // Create abort controller for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('ChromaDB query failed:', response.status, errorText);
-            throw new Error(`ChromaDB query failed: ${response.statusText}`);
-        }
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    query_embeddings: [embedding], // v2 API expects array of embeddings
+                    n_results: topK,
+                    where: { language }, // Filter by language
+                }),
+                signal: controller.signal,
+            });
 
-        const data = await response.json();
+            clearTimeout(timeoutId);
 
-        // Transform ChromaDB v2 API results to SearchResult format
-        const searchResults: SearchResult[] = [];
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('ChromaDB query failed:', response.status, errorText);
+                throw new Error(`ChromaDB query failed: ${response.statusText}`);
+            }
 
-        // v2 API returns arrays: ids[0], documents[0], metadatas[0], distances[0]
-        if (data.ids && data.ids[0] && data.ids[0].length > 0) {
-            for (let i = 0; i < data.ids[0].length; i++) {
-                const id = data.ids[0][i];
-                const document = data.documents?.[0]?.[i];
-                const metadata = data.metadatas?.[0]?.[i];
-                const distance = data.distances?.[0]?.[i];
+            const data = await response.json();
 
-                if (document && metadata) {
-                    searchResults.push({
-                        id,
-                        content: document as string,
-                        metadata: {
-                            sourceUrl: metadata.sourceUrl as string,
-                            sourceTitle: metadata.sourceTitle as string | undefined,
-                            category: metadata.category as string | undefined,
-                            language: metadata.language as string,
-                            hasContactInfo: metadata.hasContactInfo as boolean | undefined,
-                        },
-                        score: distance !== undefined ? 1 - distance : 0, // Convert distance to similarity score
-                    });
+            // Transform ChromaDB v2 API results to SearchResult format
+            const searchResults: SearchResult[] = [];
+
+            // v2 API returns arrays: ids[0], documents[0], metadatas[0], distances[0]
+            if (data.ids && data.ids[0] && data.ids[0].length > 0) {
+                for (let i = 0; i < data.ids[0].length; i++) {
+                    const id = data.ids[0][i];
+                    const document = data.documents?.[0]?.[i];
+                    const metadata = data.metadatas?.[0]?.[i];
+                    const distance = data.distances?.[0]?.[i];
+
+                    if (document && metadata) {
+                        searchResults.push({
+                            id,
+                            content: document as string,
+                            metadata: {
+                                sourceUrl: metadata.sourceUrl as string,
+                                sourceTitle: metadata.sourceTitle as string | undefined,
+                                category: metadata.category as string | undefined,
+                                language: metadata.language as string,
+                                hasContactInfo: metadata.hasContactInfo as boolean | undefined,
+                            },
+                            score: distance !== undefined ? 1 - distance : 0, // Convert distance to similarity score
+                        });
+                    }
                 }
             }
-        }
 
-        return searchResults;
+            return searchResults;
+        } catch (innerError) {
+            clearTimeout(timeoutId);
+
+            // Handle timeout specifically
+            if (innerError instanceof Error && innerError.name === 'AbortError') {
+                console.error('[ChromaDB] Query timeout after 10 seconds');
+                throw new Error('ChromaDB query timeout - database may be slow or unreachable');
+            }
+
+            throw innerError;
+        }
     } catch (error) {
         console.error('ChromaDB search failed:', error);
         throw new Error('Vector search failed');

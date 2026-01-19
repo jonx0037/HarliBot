@@ -29,15 +29,41 @@ export async function POST(request: NextRequest) {
 
         // Try to execute RAG pipeline
         try {
+            console.log('[Chat API] Starting RAG pipeline execution...');
             const result = await executeRAG(message, language, conversationHistory);
+            console.log('[Chat API] RAG pipeline completed successfully');
+
             return NextResponse.json({
                 response: result.response,
                 sources: result.sources,
                 timestamp: new Date().toISOString(),
             });
         } catch (ragError) {
-            // If RAG fails (backend services not running), provide a helpful demo response
-            console.error('RAG pipeline unavailable, using demo mode:', ragError);
+            // Enhanced error logging to identify specific failure points
+            const errorMessage = ragError instanceof Error ? ragError.message : String(ragError);
+
+            // Classify error type for better debugging
+            let errorType = 'UNKNOWN';
+            if (errorMessage.includes('Embedding') || errorMessage.includes('embedding')) {
+                errorType = 'EMBEDDING_SERVICE';
+                console.error('[Chat API] ❌ Embedding service failure:', errorMessage);
+            } else if (errorMessage.includes('ChromaDB') || errorMessage.includes('Vector') || errorMessage.includes('collection')) {
+                errorType = 'VECTOR_DATABASE';
+                console.error('[Chat API] ❌ ChromaDB/Vector search failure:', errorMessage);
+            } else if (errorMessage.includes('Gemini') || errorMessage.includes('LLM') || errorMessage.includes('generateResponse')) {
+                errorType = 'LLM_SERVICE';
+                console.error('[Chat API] ❌ Gemini LLM failure:', errorMessage);
+            } else {
+                console.error('[Chat API] ❌ RAG pipeline failure (unknown type):', errorMessage);
+            }
+
+            // Log full error in development
+            if (process.env.NODE_ENV === 'development') {
+                console.error('[Chat API] Full error details:', ragError);
+            }
+
+            // Fall back to demo mode with error type logged
+            console.warn(`[Chat API] ⚠️ Falling back to demo mode due to ${errorType} error`);
 
             const demoResponse = language === 'en'
                 ? `Thank you for your question! This is a demo version of HarliBot. The City of Harlingen offers many services including:\n\n• Utilities (water, electric, trash)\n• Building permits and licenses\n• Parks and recreation programs\n• Public safety services\n• Infrastructure maintenance\n\nFor real-time assistance, please call City Hall at (956) 427-8080 or visit harlingentx.gov.\n\n*Note: Full RAG functionality requires backend services to be running.*`
@@ -47,6 +73,10 @@ export async function POST(request: NextRequest) {
                 response: demoResponse,
                 sources: [],
                 timestamp: new Date().toISOString(),
+                // Include error type in development mode
+                ...(process.env.NODE_ENV === 'development' && {
+                    debug: { errorType, errorMessage }
+                }),
             });
         }
 
