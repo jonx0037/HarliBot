@@ -36,7 +36,7 @@ print(f"3️⃣  Testing query: '{test_query}'")
 print("   Generating query embedding...")
 response = co.embed(
     texts=[test_query],
-    model='embed-english-v3.0',
+    model='embed-multilingual-v3.0',
     input_type='search_query'  # Use search_query for queries
 )
 query_embedding = response.embeddings[0]

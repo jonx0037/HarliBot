@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Generate Cohere embeddings and re-index ChromaDB Cloud
-Uses Cohere's embed-english-v3.0 model (1024 dimensions)
+Uses Cohere's embed-multilingual-v3.0 model (1024 dimensions)
 """
 import chromadb
 import cohere
@@ -40,7 +40,7 @@ with open(chunks_file, 'r') as f:
 print(f"   ✅ Loaded {len(chunks)} chunks")
 
 # Step 3: Generate embeddings using Cohere
-print("\n3️⃣  Generating embeddings with Cohere embed-english-v3.0 (1024-dim)...")
+print("\n3️⃣  Generating embeddings with Cohere embed-multilingual-v3.0 (1024-dim)...")
 texts = [chunk['content'] for chunk in chunks]
 
 # Cohere batch limit is 96 texts per request
@@ -56,7 +56,7 @@ for i in range(0, len(texts), batch_size):
     
     response = co.embed(
         texts=batch_texts,
-        model='embed-english-v3.0',  # 1024 dimensions
+        model='embed-multilingual-v3.0',  # 1024 dimensions
         input_type='search_document'
     )
     
