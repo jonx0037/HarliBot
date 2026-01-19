@@ -38,13 +38,13 @@ export async function POST(request: NextRequest) {
 
         console.log('[API/Embeddings] Calling Lambda service...');
 
-        // Call Lambda embedding service
-        const response = await fetch(LAMBDA_ENDPOINT, {
+        // Call Lambda embedding service (expects 'texts' array)
+        const response = await fetch(`${LAMBDA_ENDPOINT}/embed`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ text }),
+            body: JSON.stringify({ texts: [text] }),
         });
 
         if (!response.ok) {
@@ -56,9 +56,10 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const data: EmbeddingResponse = await response.json();
+        const data = await response.json();
 
-        if (!data.embedding || !Array.isArray(data.embedding)) {
+        // Lambda returns { embeddings: [[...]], model, dimension, count }
+        if (!data.embeddings || !Array.isArray(data.embeddings) || data.embeddings.length === 0) {
             console.error('[API/Embeddings] Invalid response from Lambda');
             return NextResponse.json(
                 { error: 'Invalid embedding response' },
@@ -66,9 +67,15 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        console.log(`[API/Embeddings] Generated ${data.dimensions}-dimensional embedding`);
+        // Return the first embedding (we only sent one text)
+        const embedding = data.embeddings[0];
+        console.log(`[API/Embeddings] Generated ${data.dimension}-dimensional embedding`);
 
-        return NextResponse.json(data);
+        return NextResponse.json({
+            embedding,
+            model: data.model,
+            dimensions: data.dimension
+        });
 
     } catch (error) {
         console.error('[API/Embeddings] Error:', error);
