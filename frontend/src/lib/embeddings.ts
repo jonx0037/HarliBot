@@ -57,21 +57,16 @@ async function generateEmbeddingDirect(text: string): Promise<number[]> {
 
 /**
  * Generate embedding for a text query
- * Routes to Lambda directly on server, or via API proxy on client
+ * Uses Cohere API directly via internal API route
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
-    // Server-side: call Lambda directly to avoid relative URL issues
-    if (isServer()) {
-        return generateEmbeddingDirect(text);
-    }
-
-    // Client-side: use internal API proxy
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
     try {
-        const url = '/api/embeddings';
-        console.log('[Embeddings] Calling internal API:', url);
+        // Use Cohere API endpoint (works on both client and server)
+        const url = '/api/embeddings-cohere';
+        console.log('[Embeddings] Calling Cohere API via internal route:', url);
 
         const response = await fetch(url, {
             method: 'POST',
@@ -103,7 +98,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 
         // Handle timeout specifically
         if (error instanceof Error && error.name === 'AbortError') {
-            console.error('[Embeddings] Request timeout after 5 seconds');
+            console.error('[Embeddings] Request timeout after 10 seconds');
             throw new Error('Embedding service timeout - please try again');
         }
 
