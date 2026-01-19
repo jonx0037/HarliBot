@@ -5,10 +5,10 @@
  * using the text-embedding-004 model.
  */
 
-const LAMBDA_ENDPOINT = process.env.NEXT_PUBLIC_LAMBDA_ENDPOINT;
+const LAMBDA_ENDPOINT = process.env.EMBEDDING_SERVICE_URL;
 
 if (!LAMBDA_ENDPOINT) {
-    console.error('NEXT_PUBLIC_LAMBDA_ENDPOINT is not configured');
+    console.error('EMBEDDING_SERVICE_URL is not configured');
 }
 
 export interface EmbeddingResponse {
@@ -22,7 +22,7 @@ export interface EmbeddingResponse {
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
     if (!LAMBDA_ENDPOINT) {
-        throw new Error('Lambda endpoint not configured. Please set NEXT_PUBLIC_LAMBDA_ENDPOINT environment variable.');
+        throw new Error('Lambda endpoint not configured. Please set EMBEDDING_SERVICE_URL environment variable.');
     }
 
     try {
