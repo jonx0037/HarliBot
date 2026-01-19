@@ -1,52 +1,59 @@
-// ChromaDB HTTP client for vector similarity search
-// Using direct HTTP calls instead of the chromadb npm package for Next.js compatibility
+// ChromaDB Cloud client for vector similarity search
+// Using official chromadb npm package for proper Cloud authentication
 
-const CHROMADB_URL = process.env.CHROMADB_URL || 'http://localhost:8001';
-const CHROMADB_COLLECTION = process.env.CHROMADB_COLLECTION || 'harlingen_city_content';
-const CHROMADB_TENANT = process.env.CHROMADB_TENANT || 'default_tenant';
-const CHROMADB_DATABASE = process.env.CHROMADB_DATABASE || 'default_database';
+import { ChromaClient } from 'chromadb';
+
 const CHROMADB_API_KEY = process.env.CHROMADB_API_KEY;
+const CHROMADB_COLLECTION = process.env.CHROMADB_COLLECTION || 'harlingen_city_content';
 
-// Cache the collection ID
-let collectionIdCache: string | null = null;
+// Cache the client and collection
+let clientCache: ChromaClient | null = null;
+let collectionCache: any | null = null;
 
 /**
- * Get collection ID from collection name
+ * Get or create ChromaDB Cloud client
  */
-async function getCollectionId(): Promise<string> {
-    if (collectionIdCache) {
-        return collectionIdCache;
+async function getClient(): Promise<ChromaClient> {
+    if (clientCache) {
+        return clientCache;
+    }
+
+    if (!CHROMADB_API_KEY) {
+        throw new Error('CHROMADB_API_KEY environment variable is required');
     }
 
     try {
-        const url = `${CHROMADB_URL}/api/v2/tenants/${CHROMADB_TENANT}/databases/${CHROMADB_DATABASE}/collections`;
-        const headers: HeadersInit = {
-            'Content-Type': 'application/json',
-        };
+        // Use CloudClient for ChromaDB Cloud authentication
+        const { CloudClient } = await import('chromadb');
+        clientCache = new CloudClient({
+            apiKey: CHROMADB_API_KEY,
+        });
 
-        // Add API key if available (required for ChromaDB Cloud)
-        if (CHROMADB_API_KEY) {
-            headers['Authorization'] = `Bearer ${CHROMADB_API_KEY}`;
-        }
-
-        const response = await fetch(url, { headers });
-
-        if (!response.ok) {
-            throw new Error(`Failed to list collections: ${response.statusText}`);
-        }
-
-        const collections = await response.json();
-        const collection = collections.find((c: any) => c.name === CHROMADB_COLLECTION);
-
-        if (!collection) {
-            throw new Error(`Collection ${CHROMADB_COLLECTION} not found`);
-        }
-
-        collectionIdCache = collection.id;
-        return collection.id;
+        return clientCache;
     } catch (error) {
-        console.error('Failed to get collection ID:', error);
-        throw new Error('Failed to get collection ID');
+        console.error('Failed to create ChromaDB client:', error);
+        throw new Error('Failed to initialize ChromaDB client');
+    }
+}
+
+/**
+ * Get collection (cached)
+ */
+async function getCollection() {
+    if (collectionCache) {
+        return collectionCache;
+    }
+
+    try {
+        const client = await getClient();
+        collectionCache = await client.getCollection({
+            name: CHROMADB_COLLECTION,
+        });
+
+        return collectionCache;
+    } catch (error) {
+        console.error('Failed to get collection:', error);
+        throw new Error(`Failed to get collection ${CHROMADB_COLLECTION}`);
     }
 }
 
@@ -65,7 +72,7 @@ export interface SearchResult {
 
 /**
  * Search for similar content chunks using embedding
- * Uses ChromaDB v2 HTTP API directly for Next.js compatibility
+ * Uses official ChromaDB CloudClient for proper authentication
  */
 export async function searchSimilarChunks(
     embedding: number[],
@@ -73,87 +80,43 @@ export async function searchSimilarChunks(
     topK: number = 5
 ): Promise<SearchResult[]> {
     try {
-        // Get collection ID (cached after first call)
-        const collectionId = await getCollectionId();
+        const collection = await getCollection();
 
-        // ChromaDB v2 API uses /query endpoint (not /search)
-        const url = `${CHROMADB_URL}/api/v2/tenants/${CHROMADB_TENANT}/databases/${CHROMADB_DATABASE}/collections/${collectionId}/query`;
+        // Query the collection
+        const results = await collection.query({
+            queryEmbeddings: [embedding],
+            nResults: topK,
+            where: { language },
+        });
 
-        const headers: HeadersInit = {
-            'Content-Type': 'application/json',
-        };
+        // Transform results to SearchResult format
+        const searchResults: SearchResult[] = [];
 
-        // Add API key if available (required for ChromaDB Cloud)
-        if (CHROMADB_API_KEY) {
-            headers['Authorization'] = `Bearer ${CHROMADB_API_KEY}`;
-        }
+        if (results.ids && results.ids[0] && results.ids[0].length > 0) {
+            for (let i = 0; i < results.ids[0].length; i++) {
+                const id = results.ids[0][i];
+                const document = results.documents?.[0]?.[i];
+                const metadata = results.metadatas?.[0]?.[i];
+                const distance = results.distances?.[0]?.[i];
 
-        // Create abort controller for timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({
-                    query_embeddings: [embedding], // v2 API expects array of embeddings
-                    n_results: topK,
-                    where: { language }, // Filter by language
-                }),
-                signal: controller.signal,
-            });
-
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('ChromaDB query failed:', response.status, errorText);
-                throw new Error(`ChromaDB query failed: ${response.statusText}`);
-            }
-
-            const data = await response.json();
-
-            // Transform ChromaDB v2 API results to SearchResult format
-            const searchResults: SearchResult[] = [];
-
-            // v2 API returns arrays: ids[0], documents[0], metadatas[0], distances[0]
-            if (data.ids && data.ids[0] && data.ids[0].length > 0) {
-                for (let i = 0; i < data.ids[0].length; i++) {
-                    const id = data.ids[0][i];
-                    const document = data.documents?.[0]?.[i];
-                    const metadata = data.metadatas?.[0]?.[i];
-                    const distance = data.distances?.[0]?.[i];
-
-                    if (document && metadata) {
-                        searchResults.push({
-                            id,
-                            content: document as string,
-                            metadata: {
-                                sourceUrl: metadata.sourceUrl as string,
-                                sourceTitle: metadata.sourceTitle as string | undefined,
-                                category: metadata.category as string | undefined,
-                                language: metadata.language as string,
-                                hasContactInfo: metadata.hasContactInfo as boolean | undefined,
-                            },
-                            score: distance !== undefined ? 1 - distance : 0, // Convert distance to similarity score
-                        });
-                    }
+                if (document && metadata) {
+                    searchResults.push({
+                        id,
+                        content: document as string,
+                        metadata: {
+                            sourceUrl: metadata.sourceUrl as string,
+                            sourceTitle: metadata.sourceTitle as string | undefined,
+                            category: metadata.category as string | undefined,
+                            language: metadata.language as string,
+                            hasContactInfo: metadata.hasContactInfo as boolean | undefined,
+                        },
+                        score: distance !== undefined ? 1 - distance : 0,
+                    });
                 }
             }
-
-            return searchResults;
-        } catch (innerError) {
-            clearTimeout(timeoutId);
-
-            // Handle timeout specifically
-            if (innerError instanceof Error && innerError.name === 'AbortError') {
-                console.error('[ChromaDB] Query timeout after 10 seconds');
-                throw new Error('ChromaDB query timeout - database may be slow or unreachable');
-            }
-
-            throw innerError;
         }
+
+        return searchResults;
     } catch (error) {
         console.error('ChromaDB search failed:', error);
         throw new Error('Vector search failed');
@@ -161,33 +124,16 @@ export async function searchSimilarChunks(
 }
 
 /**
- * Get collection stats via v2 HTTP API
+ * Get collection stats
  */
 export async function getCollectionStats() {
     try {
-        const collectionId = await getCollectionId();
-        const url = `${CHROMADB_URL}/api/v2/tenants/${CHROMADB_TENANT}/databases/${CHROMADB_DATABASE}/collections/${collectionId}/count`;
-
-        const headers: HeadersInit = {
-            'Content-Type': 'application/json',
-        };
-
-        // Add API key if available (required for ChromaDB Cloud)
-        if (CHROMADB_API_KEY) {
-            headers['Authorization'] = `Bearer ${CHROMADB_API_KEY}`;
-        }
-
-        const response = await fetch(url, { headers });
-
-        if (!response.ok) {
-            throw new Error(`Failed to get collection stats: ${response.statusText}`);
-        }
-
-        const data = await response.json();
+        const collection = await getCollection();
+        const count = await collection.count();
 
         return {
             name: CHROMADB_COLLECTION,
-            count: data.count || 0,
+            count,
         };
     } catch (error) {
         console.error('Failed to get collection stats:', error);
