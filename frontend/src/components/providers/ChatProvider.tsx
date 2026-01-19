@@ -168,14 +168,18 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'SET_TYPING', payload: true })
 
     try {
-      // Call API
+      // Call API with sanitized conversation history
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: content,
           language: state.language,
-          conversationHistory: state.messages.slice(-6), // Last 3 exchanges
+          // Only send role and content to match API schema
+          conversationHistory: state.messages.slice(-6).map(msg => ({
+            role: msg.role,
+            content: msg.content,
+          })),
         }),
       })
 
