@@ -1,15 +1,9 @@
 /**
- * Embedding generation using AWS Lambda service
+ * Embedding generation using internal API route
  * 
- * This module calls the Lambda function that generates embeddings
- * using the text-embedding-004 model.
+ * This module calls the server-side /api/embeddings route,
+ * which securely proxies requests to the AWS Lambda service.
  */
-
-const LAMBDA_ENDPOINT = process.env.EMBEDDING_SERVICE_URL;
-
-if (!LAMBDA_ENDPOINT) {
-    console.error('EMBEDDING_SERVICE_URL is not configured');
-}
 
 export interface EmbeddingResponse {
     embedding: number[];
@@ -18,17 +12,13 @@ export interface EmbeddingResponse {
 }
 
 /**
- * Generate embedding for a text query using Lambda service
+ * Generate embedding for a text query using internal API
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
-    if (!LAMBDA_ENDPOINT) {
-        throw new Error('Lambda endpoint not configured. Please set EMBEDDING_SERVICE_URL environment variable.');
-    }
-
     try {
-        console.log('[Embeddings] Calling Lambda service...');
+        console.log('[Embeddings] Calling internal API...');
 
-        const response = await fetch(LAMBDA_ENDPOINT, {
+        const response = await fetch('/api/embeddings', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -37,14 +27,14 @@ export async function generateEmbedding(text: string): Promise<number[]> {
         });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Lambda service error (${response.status}): ${errorText}`);
+            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(`Embedding API error (${response.status}): ${errorData.error || 'Unknown error'}`);
         }
 
         const data: EmbeddingResponse = await response.json();
 
         if (!data.embedding || !Array.isArray(data.embedding)) {
-            throw new Error('Invalid embedding response from Lambda service');
+            throw new Error('Invalid embedding response from API');
         }
 
         console.log(`[Embeddings] Generated ${data.dimensions}-dimensional embedding`);
