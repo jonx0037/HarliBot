@@ -1,34 +1,20 @@
 # AWS Lambda Container Image for HarliBot Embedding Service
-# Optimized for sentence-transformers with PyTorch
+# Uses Cohere API - lightweight, no model download required
 
 FROM public.ecr.aws/lambda/python:3.11
 
 # Set working directory
 WORKDIR ${LAMBDA_TASK_ROOT}
 
-# Install system dependencies
-RUN yum install -y \
-    gcc \
-    gcc-c++ \
-    && yum clean all
+# Install build dependencies for Cohere SDK
+RUN yum install -y gcc gcc-c++ && yum clean all
 
 # Copy requirements first for better layer caching
-COPY requirements-lambda.txt .
+COPY requirements.txt .
 
 # Install Python dependencies
-# Use --no-cache-dir to reduce image size
-RUN pip install --no-cache-dir -r requirements-lambda.txt
-
-# Pre-download the sentence-transformers model during build
-# Download to a location that will be included in the image
-ENV HF_HOME=/var/task/.cache/huggingface
-ENV TRANSFORMERS_CACHE=/var/task/.cache/transformers
-ENV SENTENCE_TRANSFORMERS_HOME=/var/task/.cache/sentence_transformers
-
-RUN mkdir -p /var/task/.cache && \
-    python -c "from sentence_transformers import SentenceTransformer; \
-    model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-mpnet-base-v2'); \
-    print(f'Model downloaded, dimension: {model.get_sentence_embedding_dimension()}')"
+# Cohere SDK is lightweight - no heavy ML dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy Lambda handler
 COPY lambda_handler.py .

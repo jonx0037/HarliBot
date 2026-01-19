@@ -1,56 +1,41 @@
 """
 AWS Lambda handler for HarliBot Embedding Service
 
-This handler wraps the sentence-transformers model for serverless deployment.
-Optimized for Lambda container runtime with API Gateway integration.
+This handler uses Cohere's Embed Multilingual v2.0 API to match
+ChromaDB Cloud's embedding model (768 dimensions).
 
-The model is pre-downloaded during Docker build to /var/task/.cache to avoid
-runtime downloads and read-only filesystem issues.
+Optimized for Lambda runtime with API Gateway integration.
 """
 
 import json
 import logging
 import os
-from typing import List, Dict, Any, Optional
-
-from sentence_transformers import SentenceTransformer
+from typing import List, Dict, Any
+import cohere
 
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# Global model instance (persists across warm invocations)
-MODEL_NAME = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
-model: Optional[SentenceTransformer] = None
-model_loaded: bool = False
-model_dimension: int = 768  # Default dimension for this model
+# Cohere configuration
+COHERE_API_KEY = os.environ.get("COHERE_API_KEY")
+MODEL_NAME = "embed-multilingual-v2.0"
+MODEL_DIMENSION = 768
+
+# Global Cohere client (persists across warm invocations)
+cohere_client = None
 
 
-def load_model():
-    """Load the embedding model (called on cold start)"""
-    global model, model_loaded, model_dimension
-    if model is None:
-        logger.info(f"Cold start: Loading model {MODEL_NAME}")
-        try:
-            model = SentenceTransformer(MODEL_NAME)
-            model_dimension = model.get_sentence_embedding_dimension()
-            model_loaded = True
-            logger.info(f"Model loaded successfully. Dimension: {model_dimension}")
-        except Exception as e:
-            logger.error(f"Failed to load model: {str(e)}", exc_info=True)
-            model_loaded = False
-            raise
-    return model
-
-
-# Preload model at module initialization (outside handler)
-# This happens during Lambda cold start, before the first request
-try:
-    logger.info("Preloading model at Lambda initialization...")
-    load_model()
-    logger.info("Model preloaded successfully")
-except Exception as e:
-    logger.error(f"Failed to preload model: {str(e)}")
+def get_cohere_client():
+    """Get or create Cohere client"""
+    global cohere_client
+    if cohere_client is None:
+        if not COHERE_API_KEY:
+            raise ValueError("COHERE_API_KEY environment variable is required")
+        logger.info("Initializing Cohere client")
+        cohere_client = cohere.Client(COHERE_API_KEY)
+        logger.info("Cohere client initialized successfully")
+    return cohere_client
 
 
 def create_cors_headers(origin: str = "*") -> Dict[str, str]:
@@ -142,35 +127,30 @@ def handle_health(cors_headers: Dict[str, str]) -> Dict[str, Any]:
     """
     Handle health check requests
     
-    Lightweight check that doesn't load the model - just reports status.
-    Model is preloaded at Lambda initialization.
+    Lightweight check that verifies Cohere API key is configured.
     """
     try:
-        # Check if model is loaded (don't trigger loading)
-        if model_loaded and model is not None:
+        if COHERE_API_KEY:
             return {
                 "statusCode": 200,
                 "headers": {**cors_headers, "Content-Type": "application/json"},
                 "body": json.dumps({
                     "status": "healthy",
                     "service": "HarliBot Embedding Service",
+                    "provider": "Cohere",
                     "model": MODEL_NAME,
-                    "model_loaded": True,
-                    "dimension": model_dimension
+                    "dimension": MODEL_DIMENSION,
+                    "api_key_configured": True
                 })
             }
         else:
-            # Model not loaded yet (shouldn't happen with preloading)
-            logger.warning("Health check called but model not loaded")
             return {
                 "statusCode": 503,
                 "headers": {**cors_headers, "Content-Type": "application/json"},
                 "body": json.dumps({
-                    "status": "initializing",
+                    "status": "unhealthy",
                     "service": "HarliBot Embedding Service",
-                    "model": MODEL_NAME,
-                    "model_loaded": False,
-                    "message": "Model is still loading"
+                    "error": "COHERE_API_KEY not configured"
                 })
             }
     except Exception as e:
@@ -186,7 +166,7 @@ def handle_health(cors_headers: Dict[str, str]) -> Dict[str, Any]:
 
 
 def handle_embed(event: Dict[str, Any], cors_headers: Dict[str, str]) -> Dict[str, Any]:
-    """Handle embedding generation requests"""
+    """Handle embedding generation requests using Cohere API"""
     
     # Parse request body
     try:
@@ -223,31 +203,31 @@ def handle_embed(event: Dict[str, Any], cors_headers: Dict[str, str]) -> Dict[st
             })
         }
     
-    if len(texts) > 100:
+    if len(texts) > 96:  # Cohere's batch limit
         return {
             "statusCode": 400,
             "headers": {**cors_headers, "Content-Type": "application/json"},
             "body": json.dumps({
                 "error": "Too many texts",
-                "message": "Maximum 100 texts per request"
+                "message": "Maximum 96 texts per request (Cohere limit)"
             })
         }
     
-    # Generate embeddings
+    # Generate embeddings using Cohere API
     try:
-        mdl = load_model()
-        normalize = body.get("normalize", True)
+        client = get_cohere_client()
         
-        logger.info(f"Generating embeddings for {len(texts)} texts")
+        logger.info(f"Generating embeddings for {len(texts)} texts using Cohere")
         
-        embeddings = mdl.encode(
-            texts,
-            normalize_embeddings=normalize,
-            show_progress_bar=False,
-            convert_to_numpy=True
+        # Call Cohere embed API
+        response = client.embed(
+            texts=texts,
+            model=MODEL_NAME,
+            input_type="search_query",  # Optimized for search/retrieval
+            truncate="END"  # Truncate long texts from the end
         )
         
-        embeddings_list = embeddings.tolist()
+        embeddings_list = response.embeddings
         
         logger.info(f"Successfully generated {len(embeddings_list)} embeddings")
         
