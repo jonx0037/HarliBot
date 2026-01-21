@@ -28,7 +28,7 @@ echo "🎯 Updating critical backend service URLs..."
 echo ""
 
 # Update Embedding Service URL (AWS Lambda)
-update_env "EMBEDDING_SERVICE_URL" "https://31sw7weg4d.execute-api.us-east-1.amazonaws.com/prod"
+update_env "EMBEDDING_SERVICE_URL" "https://oeb9lfxq56.execute-api.us-east-1.amazonaws.com/prod"
 
 # Update ChromaDB URL
 update_env "CHROMADB_URL" "https://api.trychroma.com"

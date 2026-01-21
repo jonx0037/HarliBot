@@ -76,8 +76,20 @@ docker push ${ECR_IMAGE_URI}
 echo -e "${GREEN}✓ Image pushed to ECR${NC}"
 
 # Step 6: Deploy with SAM (skip build - using pre-built ECR image)
+# Load environment variables from .env.local if available
+if [ -f ../.env.local ]; then
+    echo "Loading environment variables from ../.env.local"
+    export $(grep -v '^#' ../.env.local | xargs)
+fi
+
+if [ -z "$COHERE_API_KEY" ]; then
+    echo -e "${RED}Error: COHERE_API_KEY not found in environment or ../.env.local${NC}"
+    exit 1
+fi
+
+# Step 6: Deploy with SAM (skip build - using pre-built ECR image)
 echo -e "\n${YELLOW}Step 6: Deploying to AWS Lambda...${NC}"
-sam deploy --template ../template.yaml --no-confirm-changeset
+sam deploy --template ../template.yaml --no-confirm-changeset --parameter-overrides CohereApiKey=$COHERE_API_KEY
 
 # Step 7: Get API endpoint
 echo -e "\n${YELLOW}Step 8: Retrieving API endpoint...${NC}"
