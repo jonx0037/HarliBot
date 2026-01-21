@@ -22,52 +22,53 @@ function isServer(): boolean {
 /**
  * Generate embedding by calling Lambda directly (server-side only)
  */
-/**
- * Generate embedding by calling Cohere directly (server-side only)
- */
 async function generateEmbeddingDirect(text: string): Promise<number[]> {
-    const COHERE_API_KEY = process.env.COHERE_API_KEY;
+    const LAMBDA_ENDPOINT = process.env.EMBEDDING_SERVICE_URL;
 
-    if (!COHERE_API_KEY) {
-        throw new Error('COHERE_API_KEY not configured on server');
+    if (!LAMBDA_ENDPOINT) {
+        throw new Error('EMBEDDING_SERVICE_URL not configured on server');
     }
 
-    console.log('[Embeddings] Calling Cohere API directly from server...');
+    console.log('[Embeddings] Calling Lambda service directly from server...');
 
-    const response = await fetch('https://api.cohere.ai/v1/embed', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${COHERE_API_KEY}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            texts: [text],
-            model: 'embed-multilingual-v3.0',
-            input_type: 'search_query',
-            truncate: 'END'
-        }),
-    });
+    try {
+        const response = await fetch(`${LAMBDA_ENDPOINT}/embed`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                texts: [text],
+                normalize: true
+            }),
+        });
 
-    if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[Embeddings] Cohere API error (${response.status}):`, errorText);
-        throw new Error(`Embedding service error: ${response.status}`);
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`[Embeddings] Lambda service error (${response.status}):`, errorText);
+            throw new Error(`Embedding service error: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Lambda returns { embeddings: [[...]], model, dimension, count }
+        if (!data.embeddings || !Array.isArray(data.embeddings) || data.embeddings.length === 0) {
+            throw new Error('Invalid embedding response from Lambda service');
+        }
+
+        const embedding = data.embeddings[0];
+        console.log(`[Embeddings] Generated ${embedding.length}-dimensional embedding`);
+        return embedding;
+
+    } catch (error) {
+        console.error('[Embeddings] Error calling Lambda:', error);
+        throw error;
     }
-
-    const data = await response.json();
-
-    if (!data.embeddings || !Array.isArray(data.embeddings) || data.embeddings.length === 0) {
-        throw new Error('Invalid embedding response from Cohere');
-    }
-
-    const embedding = data.embeddings[0];
-    console.log(`[Embeddings] Generated ${embedding.length}-dimensional embedding`);
-    return embedding;
 }
 
 /**
  * Generate embedding for a text query
- * Uses Cohere API directly if on server, or internal API route if on client
+ * Uses Lambda URL directly if on server, or internal API route if on client
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
     // If running on server, call directly to avoid relative URL issues
@@ -80,8 +81,9 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 
     try {
         // Use internal API proxy (works only on client/browser)
-        const url = '/api/embeddings-cohere';
-        console.log('[Embeddings] Calling Cohere API via internal route:', url);
+        // This proxies to /api/embeddings -> Lambda
+        const url = '/api/embeddings';
+        console.log('[Embeddings] Calling embedding API via internal route:', url);
 
         const response = await fetch(url, {
             method: 'POST',
