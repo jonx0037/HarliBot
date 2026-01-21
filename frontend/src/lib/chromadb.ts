@@ -4,6 +4,8 @@
 import { ChromaClient } from 'chromadb';
 
 const CHROMADB_API_KEY = process.env.CHROMADB_API_KEY;
+const CHROMADB_TENANT = process.env.CHROMADB_TENANT;
+const CHROMADB_DATABASE = process.env.CHROMADB_DATABASE;
 const CHROMADB_COLLECTION = process.env.CHROMADB_COLLECTION || 'harlingen_city_content';
 
 // Cache the client and collection
@@ -22,11 +24,21 @@ async function getClient(): Promise<ChromaClient> {
         throw new Error('CHROMADB_API_KEY environment variable is required');
     }
 
+    if (!CHROMADB_TENANT) {
+        throw new Error('CHROMADB_TENANT environment variable is required');
+    }
+
+    if (!CHROMADB_DATABASE) {
+        throw new Error('CHROMADB_DATABASE environment variable is required');
+    }
+
     try {
         // Use CloudClient for ChromaDB Cloud authentication
         const { CloudClient } = await import('chromadb');
         clientCache = new CloudClient({
             apiKey: CHROMADB_API_KEY,
+            tenant: CHROMADB_TENANT,
+            database: CHROMADB_DATABASE,
         });
 
         return clientCache;
