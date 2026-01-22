@@ -59,15 +59,15 @@ test.describe('Chat Widget', () => {
         const messageInput = page.locator('textarea');
         await expect(messageInput).toHaveAttribute('placeholder', /city services/i);
 
-        // Click language toggle to switch to Spanish
+        // Click ES button to switch to Spanish
         const languageToggle = page.locator('[data-testid="language-toggle"]');
-        await languageToggle.click();
+        await languageToggle.locator('button', { hasText: 'ES' }).click();
 
         // Check Spanish placeholder
         await expect(messageInput).toHaveAttribute('placeholder', /servicios de la ciudad/i);
 
-        // Toggle back to English
-        await languageToggle.click();
+        // Click EN button to switch back to English
+        await languageToggle.locator('button', { hasText: 'EN' }).click();
         await expect(messageInput).toHaveAttribute('placeholder', /city services/i);
     });
 
@@ -148,8 +148,11 @@ test.describe('Chat Widget', () => {
         await messageInput.fill('Persistence test message');
         await page.locator('button[aria-label*="Send"]').click();
 
-        // Wait for user message
+        // Wait for user message to appear and be saved to localStorage
         await expect(page.locator('[data-testid="message-user"]')).toContainText('Persistence test message');
+
+        // Wait for localStorage save to complete
+        await page.waitForTimeout(500);
 
         // Reload the page
         await page.reload();
@@ -158,8 +161,11 @@ test.describe('Chat Widget', () => {
         // Open chat again
         await page.locator('[data-testid="chat-toggle-button"]').click();
 
-        // Message should still be there (loaded from localStorage)
-        await expect(page.locator('[data-testid="message-user"]')).toContainText('Persistence test message');
+        // Wait for chat window to be visible
+        await expect(page.locator('[data-testid="chat-window"]')).toBeVisible();
+
+        // Message should still be there (loaded from localStorage), with extended timeout for hydration
+        await expect(page.locator('[data-testid="message-user"]')).toContainText('Persistence test message', { timeout: 10000 });
     });
 });
 

@@ -4,44 +4,53 @@ import React, { useEffect, useRef } from 'react'
 import { useChatContext } from '@/components/providers/ChatProvider'
 import { Message } from './Message'
 import { TypingIndicator } from './TypingIndicator'
+import { SuggestedQuestions, getWelcomeSuggestions } from './SuggestedQuestions'
 
 export function MessageList() {
-  const { messages, isTyping, language } = useChatContext()
+  const { messages, isTyping, isStreaming, language, sendMessage } = useChatContext()
   const bottomRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, isTyping])
+  }, [messages, isTyping, isStreaming])
 
-  const welcomeTitle = language === 'en' 
+  // Determine if we should show suggestions
+  const lastMessage = messages[messages.length - 1]
+  const showSuggestions = lastMessage?.role === 'assistant' && !isStreaming && !isTyping
+
+  const handleSuggestionSelect = (question: string) => {
+    sendMessage(question)
+  }
+
+  const welcomeTitle = language === 'en'
     ? 'Welcome to HarliBot!'
     : '¡Bienvenido a HarliBot!'
-  
+
   const welcomeMessage = language === 'en'
     ? 'I can help you with:'
     : 'Puedo ayudarte con:'
 
   const services = language === 'en'
     ? [
-        'City services information',
-        'Department contacts',
-        'Permits and licenses',
-        'Events and news',
-      ]
+      'City services information',
+      'Department contacts',
+      'Permits and licenses',
+      'Events and news',
+    ]
     : [
-        'Información de servicios de la ciudad',
-        'Contactos de departamentos',
-        'Permisos y licencias',
-        'Eventos y noticias',
-      ]
+      'Información de servicios de la ciudad',
+      'Contactos de departamentos',
+      'Permisos y licencias',
+      'Eventos y noticias',
+    ]
 
   const exampleQuestion = language === 'en'
     ? 'Try asking: "How do I pay my water bill?"'
     : 'Intenta preguntar: "¿Cómo pago mi factura de agua?"'
 
   return (
-    <div 
+    <div
       className="flex-1 overflow-y-auto bg-chat-bg px-4 py-4 space-y-4"
       role="log"
       aria-live="polite"
@@ -53,13 +62,13 @@ export function MessageList() {
           <div className="w-16 h-16 bg-harlingen-blue rounded-full mx-auto mb-4 flex items-center justify-center">
             <span className="text-white font-bold text-2xl">H</span>
           </div>
-          
+
           <h3 className="text-xl font-bold text-gray-800 mb-2">
             {welcomeTitle}
           </h3>
-          
+
           <p className="text-gray-600 mb-3">{welcomeMessage}</p>
-          
+
           <ul className="text-sm text-gray-700 space-y-2 mb-4">
             {services.map((service, i) => (
               <li key={i} className="flex items-center justify-center gap-2">
@@ -68,7 +77,7 @@ export function MessageList() {
               </li>
             ))}
           </ul>
-          
+
           <p className="text-sm text-gray-500 italic">{exampleQuestion}</p>
         </div>
       )}
@@ -78,6 +87,14 @@ export function MessageList() {
         <Message key={message.id} message={message} />
       ))}
 
+      {/* Suggested Questions - show after last assistant message */}
+      {showSuggestions && (
+        <SuggestedQuestions
+          suggestions={getWelcomeSuggestions(language)}
+          onSelect={handleSuggestionSelect}
+        />
+      )}
+
       {/* Typing Indicator */}
       {isTyping && <TypingIndicator />}
 
@@ -86,3 +103,4 @@ export function MessageList() {
     </div>
   )
 }
+

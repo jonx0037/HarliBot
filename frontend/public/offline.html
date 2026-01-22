@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HarliBot - Offline</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 16px;
+      padding: 40px;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    }
+    .icon {
+      width: 80px;
+      height: 80px;
+      background: #1e3a5f;
+      border-radius: 50%;
+      margin: 0 auto 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon span {
+      color: white;
+      font-size: 36px;
+      font-weight: bold;
+    }
+    h1 {
+      color: #1e3a5f;
+      margin-bottom: 16px;
+      font-size: 24px;
+    }
+    p {
+      color: #666;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+    button {
+      background: #1e3a5f;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #2d5a87;
+    }
+    .es {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid #eee;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">
+      <span>H</span>
+    </div>
+    <h1>You're Offline</h1>
+    <p>HarliBot needs an internet connection to help you with City of Harlingen services.</p>
+    <button onclick="location.reload()">Try Again</button>
+    
+    <div class="es">
+      <h1>Sin Conexión</h1>
+      <p>HarliBot necesita conexión a internet para ayudarte con los servicios de la Ciudad de Harlingen.</p>
+      <button onclick="location.reload()">Intentar de Nuevo</button>
+    </div>
+  </div>
+</body>
+</html>

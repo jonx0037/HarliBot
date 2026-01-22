@@ -18,6 +18,7 @@ interface ChatState {
   messages: Message[]
   isOpen: boolean
   isTyping: boolean
+  isStreaming: boolean
   language: 'en' | 'es'
   error: string | null
 }
@@ -26,7 +27,9 @@ type ChatAction =
   | { type: 'OPEN_CHAT' }
   | { type: 'CLOSE_CHAT' }
   | { type: 'ADD_MESSAGE'; payload: Message }
+  | { type: 'UPDATE_MESSAGE'; payload: { id: string; content?: string; sources?: Message['sources'] } }
   | { type: 'SET_TYPING'; payload: boolean }
+  | { type: 'SET_STREAMING'; payload: boolean }
   | { type: 'SET_LANGUAGE'; payload: 'en' | 'es' }
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'LOAD_HISTORY'; payload: Message[] }
@@ -57,6 +60,7 @@ const initialState: ChatState = {
   messages: getWelcomeMessages('en'),
   isOpen: false,
   isTyping: false,
+  isStreaming: false,
   language: 'en',
   error: null,
 }
@@ -78,6 +82,25 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
 
     case 'SET_TYPING':
       return { ...state, isTyping: action.payload }
+
+    case 'SET_STREAMING':
+      return { ...state, isStreaming: action.payload }
+
+    case 'UPDATE_MESSAGE':
+      return {
+        ...state,
+        messages: state.messages.map(msg =>
+          msg.id === action.payload.id
+            ? {
+              ...msg,
+              content: action.payload.content !== undefined
+                ? msg.content + action.payload.content
+                : msg.content,
+              sources: action.payload.sources ?? msg.sources,
+            }
+            : msg
+        ),
+      }
 
     case 'SET_LANGUAGE':
       return { ...state, language: action.payload }
@@ -108,6 +131,7 @@ const ChatContext = createContext<ChatContextValue | undefined>(undefined)
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(chatReducer, initialState)
+  const [hasHydrated, setHasHydrated] = React.useState(false)
 
   // Load conversation history from localStorage on mount
   useEffect(() => {
@@ -133,14 +157,20 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     if (savedLang === 'en' || savedLang === 'es') {
       dispatch({ type: 'SET_LANGUAGE', payload: savedLang })
     }
+
+    // Mark as hydrated - this will trigger a re-render and enable saving
+    setHasHydrated(true)
   }, [])
 
   // Save conversation history to localStorage whenever it changes
+  // Only save after hydration is complete to avoid overwriting saved data
   useEffect(() => {
+    if (!hasHydrated) return
+
     if (state.messages.length > 0) {
       localStorage.setItem('harlibot-history', JSON.stringify(state.messages))
     }
-  }, [state.messages])
+  }, [state.messages, hasHydrated])
 
   // Save language preference
   useEffect(() => {
@@ -170,18 +200,25 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
     dispatch({ type: 'ADD_MESSAGE', payload: userMessage })
 
-    // Set typing indicator
-    dispatch({ type: 'SET_TYPING', payload: true })
+    // Create placeholder for streaming response
+    const assistantMessageId = `assistant-${Date.now()}`
+    const assistantMessage: Message = {
+      id: assistantMessageId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date(),
+    }
+    dispatch({ type: 'ADD_MESSAGE', payload: assistantMessage })
+    dispatch({ type: 'SET_STREAMING', payload: true })
 
     try {
-      // Call API with sanitized conversation history
+      // Call API with SSE streaming
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: content,
           language: state.language,
-          // Only send role and content to match API schema
           conversationHistory: state.messages.slice(-6).map(msg => ({
             role: msg.role,
             content: msg.content,
@@ -193,26 +230,56 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Failed to get response from server')
       }
 
-      const data = await response.json()
+      // Parse SSE stream
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error('No response body')
+
+      const decoder = new TextDecoder()
+      let sources: Array<{ title: string; url: string }> = []
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value, { stream: true })
+        const lines = chunk.split('\n')
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6))
+
+              if (data.text) {
+                // Append text chunk to message
+                dispatch({
+                  type: 'UPDATE_MESSAGE',
+                  payload: { id: assistantMessageId, content: data.text }
+                })
+              }
+
+              if (data.done) {
+                // Stream complete - update sources
+                sources = data.sources || []
+                dispatch({
+                  type: 'UPDATE_MESSAGE',
+                  payload: { id: assistantMessageId, sources }
+                })
+              }
+            } catch {
+              // Skip malformed JSON lines
+            }
+          }
+        }
+      }
 
       const responseTime = Date.now() - startTime
 
       // Track response received with timing
       track('chat_response_received', {
         responseTime,
-        hasRAGSources: !!data.sources?.length,
+        hasRAGSources: sources.length > 0,
         language: state.language
       })
-
-      // Add assistant message
-      const assistantMessage: Message = {
-        id: `assistant-${Date.now()}`,
-        role: 'assistant',
-        content: data.response,
-        timestamp: new Date(),
-        sources: data.sources,
-      }
-      dispatch({ type: 'ADD_MESSAGE', payload: assistantMessage })
 
     } catch (error) {
       console.error('Error sending message:', error)
@@ -223,19 +290,19 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           : 'No se pudo obtener respuesta. Por favor intenta de nuevo.'
       })
 
-      // Add error message
-      const errorMessage: Message = {
-        id: `error-${Date.now()}`,
-        role: 'assistant',
-        content: state.language === 'en'
-          ? 'I apologize, but I\'m having trouble connecting right now. Please try again in a moment.'
-          : 'Lo siento, pero estoy teniendo problemas de conexión. Por favor intenta de nuevo en un momento.',
-        timestamp: new Date(),
-      }
-      dispatch({ type: 'ADD_MESSAGE', payload: errorMessage })
+      // Update placeholder with error message
+      dispatch({
+        type: 'UPDATE_MESSAGE',
+        payload: {
+          id: assistantMessageId,
+          content: state.language === 'en'
+            ? 'I apologize, but I\'m having trouble connecting right now. Please try again in a moment.'
+            : 'Lo siento, pero estoy teniendo problemas de conexión. Por favor intenta de nuevo en un momento.'
+        }
+      })
 
     } finally {
-      dispatch({ type: 'SET_TYPING', payload: false })
+      dispatch({ type: 'SET_STREAMING', payload: false })
     }
   }
 

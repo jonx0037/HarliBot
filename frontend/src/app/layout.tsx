@@ -48,6 +48,7 @@ export const metadata: Metadata = {
       { url: '/harlingen-logo.png', sizes: '180x180', type: 'image/png' },
     ],
   },
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
@@ -64,6 +65,20 @@ export default function RootLayout({
         </ChatProvider>
         <Analytics />
         <SpeedInsights />
+        {/* Service Worker Registration */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js')
+                    .then(function(reg) { console.log('[SW] Registered:', reg.scope); })
+                    .catch(function(err) { console.log('[SW] Registration failed:', err); });
+                });
+              }
+            `
+          }}
+        />
       </body>
     </html>
   );

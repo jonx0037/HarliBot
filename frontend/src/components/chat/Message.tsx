@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
-import { Copy, Check } from 'lucide-react'
+import { Copy, Check, ThumbsUp, ThumbsDown } from 'lucide-react'
+import { track } from '@vercel/analytics'
 import type { Message as MessageType } from '@/components/providers/ChatProvider'
 import { useChatContext } from '@/components/providers/ChatProvider'
 
@@ -11,9 +12,14 @@ interface MessageProps {
 }
 
 export function Message({ message }: MessageProps) {
-  const { language } = useChatContext()
+  const { language, isStreaming, messages } = useChatContext()
   const [copied, setCopied] = useState(false)
+  const [feedback, setFeedback] = useState<'positive' | 'negative' | null>(null)
   const isUser = message.role === 'user'
+
+  // Show cursor when this is the last message and we're streaming
+  const isLastMessage = messages[messages.length - 1]?.id === message.id
+  const showStreamingCursor = !isUser && isStreaming && isLastMessage
 
   const handleCopy = async () => {
     try {
@@ -25,7 +31,23 @@ export function Message({ message }: MessageProps) {
     }
   }
 
+  const handleFeedback = (rating: 'positive' | 'negative') => {
+    // Toggle off if clicking the same rating
+    const newRating = feedback === rating ? null : rating
+    setFeedback(newRating)
+
+    if (newRating) {
+      track('feedback_submitted', {
+        rating: newRating,
+        messageId: message.id,
+        language
+      })
+    }
+  }
+
   const copyLabel = language === 'en' ? 'Copy message' : 'Copiar mensaje'
+  const thumbsUpLabel = language === 'en' ? 'Helpful' : 'Útil'
+  const thumbsDownLabel = language === 'en' ? 'Not helpful' : 'No útil'
 
   return (
     <div
@@ -69,6 +91,10 @@ export function Message({ message }: MessageProps) {
               >
                 {message.content}
               </ReactMarkdown>
+              {/* Streaming cursor */}
+              {showStreamingCursor && (
+                <span className="inline-block w-2 h-4 ml-1 bg-harlingen-navy animate-pulse" />
+              )}
             </div>
 
             {/* Sources */}
@@ -118,6 +144,36 @@ export function Message({ message }: MessageProps) {
                   <Copy className="w-3 h-3" />
                 )}
               </button>
+            )}
+
+            {/* Feedback buttons - only on assistant messages */}
+            {!isUser && !isStreaming && message.content && (
+              <>
+                <button
+                  onClick={() => handleFeedback('positive')}
+                  className={`p-1 rounded transition-all focus:outline-none focus:ring-2 focus:ring-green-400 ${feedback === 'positive'
+                    ? 'bg-green-100 text-green-600'
+                    : 'opacity-0 group-hover:opacity-100 focus:opacity-100 text-gray-400 hover:text-green-600 hover:bg-green-50'
+                    }`}
+                  aria-label={thumbsUpLabel}
+                  title={thumbsUpLabel}
+                  data-testid="feedback-positive"
+                >
+                  <ThumbsUp className="w-3 h-3" />
+                </button>
+                <button
+                  onClick={() => handleFeedback('negative')}
+                  className={`p-1 rounded transition-all focus:outline-none focus:ring-2 focus:ring-red-400 ${feedback === 'negative'
+                    ? 'bg-red-100 text-red-600'
+                    : 'opacity-0 group-hover:opacity-100 focus:opacity-100 text-gray-400 hover:text-red-600 hover:bg-red-50'
+                    }`}
+                  aria-label={thumbsDownLabel}
+                  title={thumbsDownLabel}
+                  data-testid="feedback-negative"
+                >
+                  <ThumbsDown className="w-3 h-3" />
+                </button>
+              </>
             )}
           </div>
         </div>
