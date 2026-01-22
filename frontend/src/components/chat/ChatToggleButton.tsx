@@ -22,6 +22,7 @@ export function ChatToggleButton() {
                  transition-all duration-300 hover:scale-110 active:scale-95
                  flex items-center justify-center animate-pulse-glow z-50 border-2 border-white/20"
       aria-label={label}
+      data-testid="chat-toggle-button"
     >
       <MessageCircle className="w-7 h-7 sm:w-8 sm:h-8" strokeWidth={2.5} />
 

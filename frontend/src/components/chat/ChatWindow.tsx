@@ -18,6 +18,7 @@ export function ChatWindow() {
                  flex flex-col overflow-hidden border border-harlingen-navy/10"
       role="region"
       aria-label="Chat with HarliBot"
+      data-testid="chat-window"
     >
       <ChatHeader />
       <MessageList />

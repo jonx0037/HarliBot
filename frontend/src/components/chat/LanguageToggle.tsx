@@ -7,10 +7,11 @@ export function LanguageToggle() {
   const { language, setLanguage } = useChatContext()
 
   return (
-    <div 
+    <div
       className="flex bg-white/10 rounded-full p-1"
       role="tablist"
       aria-label="Select language"
+      data-testid="language-toggle"
     >
       <button
         role="tab"
@@ -18,8 +19,8 @@ export function LanguageToggle() {
         onClick={() => setLanguage('en')}
         className={`
           px-3 py-1 rounded-full text-sm font-medium transition-all
-          ${language === 'en' 
-            ? 'bg-white text-harlingen-blue' 
+          ${language === 'en'
+            ? 'bg-white text-harlingen-blue'
             : 'text-white/60 hover:text-white'
           }
         `}
@@ -32,8 +33,8 @@ export function LanguageToggle() {
         onClick={() => setLanguage('es')}
         className={`
           px-3 py-1 rounded-full text-sm font-medium transition-all
-          ${language === 'es' 
-            ? 'bg-white text-harlingen-blue' 
+          ${language === 'es'
+            ? 'bg-white text-harlingen-blue'
             : 'text-white/60 hover:text-white'
           }
         `}

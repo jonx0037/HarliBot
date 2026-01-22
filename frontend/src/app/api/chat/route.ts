@@ -13,6 +13,10 @@ const ChatRequestSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+    // Generate request ID for tracing
+    const requestId = `req-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+    const startTime = performance.now();
+
     try {
         // Parse and validate request
         const body = await request.json();
@@ -29,9 +33,11 @@ export async function POST(request: NextRequest) {
 
         // Try to execute RAG pipeline
         try {
-            console.log('[Chat API] Starting RAG pipeline execution...');
+            console.log(`[Chat API] [${requestId}] Starting RAG pipeline | lang=${language} | msgLen=${message.length}`);
             const result = await executeRAG(message, language, conversationHistory);
-            console.log('[Chat API] RAG pipeline completed successfully');
+
+            const duration = Math.round(performance.now() - startTime);
+            console.log(`[Chat API] [${requestId}] ✅ RAG completed in ${duration}ms | sources=${result.sources.length}`);
 
             return NextResponse.json({
                 response: result.response,
@@ -46,15 +52,15 @@ export async function POST(request: NextRequest) {
             let errorType = 'UNKNOWN';
             if (errorMessage.includes('Embedding') || errorMessage.includes('embedding')) {
                 errorType = 'EMBEDDING_SERVICE';
-                console.error('[Chat API] ❌ Embedding service failure:', errorMessage);
+                console.error(`[Chat API] [${requestId}] ❌ Embedding service failure:`, errorMessage);
             } else if (errorMessage.includes('ChromaDB') || errorMessage.includes('Vector') || errorMessage.includes('collection')) {
                 errorType = 'VECTOR_DATABASE';
-                console.error('[Chat API] ❌ ChromaDB/Vector search failure:', errorMessage);
+                console.error(`[Chat API] [${requestId}] ❌ ChromaDB/Vector search failure:`, errorMessage);
             } else if (errorMessage.includes('Gemini') || errorMessage.includes('LLM') || errorMessage.includes('generateResponse')) {
                 errorType = 'LLM_SERVICE';
-                console.error('[Chat API] ❌ Gemini LLM failure:', errorMessage);
+                console.error(`[Chat API] [${requestId}] ❌ Gemini LLM failure:`, errorMessage);
             } else {
-                console.error('[Chat API] ❌ RAG pipeline failure (unknown type):', errorMessage);
+                console.error(`[Chat API] [${requestId}] ❌ RAG pipeline failure (unknown type):`, errorMessage);
             }
 
             // Log full error in development

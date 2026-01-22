@@ -1,6 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useReducer, useEffect } from 'react'
+import { track } from '@vercel/analytics'
 
 export interface Message {
   id: string
@@ -155,6 +156,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   }
 
   const sendMessage = async (content: string) => {
+    const startTime = Date.now()
+
+    // Track message sent event
+    track('chat_message_sent', { language: state.language })
+
     // Add user message immediately
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -188,6 +194,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       }
 
       const data = await response.json()
+
+      const responseTime = Date.now() - startTime
+
+      // Track response received with timing
+      track('chat_response_received', {
+        responseTime,
+        hasRAGSources: !!data.sources?.length,
+        language: state.language
+      })
 
       // Add assistant message
       const assistantMessage: Message = {
@@ -225,10 +240,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   }
 
   const setLanguage = (lang: 'en' | 'es') => {
+    track('language_changed', { from: state.language, to: lang })
     dispatch({ type: 'SET_LANGUAGE', payload: lang })
   }
 
   const clearHistory = () => {
+    track('chat_cleared', { language: state.language })
     dispatch({ type: 'CLEAR_HISTORY' })
     localStorage.removeItem('harlibot-history')
   }

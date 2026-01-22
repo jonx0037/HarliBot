@@ -1,7 +1,8 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
+import { Copy, Check } from 'lucide-react'
 import type { Message as MessageType } from '@/components/providers/ChatProvider'
 import { useChatContext } from '@/components/providers/ChatProvider'
 
@@ -11,10 +12,26 @@ interface MessageProps {
 
 export function Message({ message }: MessageProps) {
   const { language } = useChatContext()
+  const [copied, setCopied] = useState(false)
   const isUser = message.role === 'user'
 
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(message.content)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
+    }
+  }
+
+  const copyLabel = language === 'en' ? 'Copy message' : 'Copiar mensaje'
+
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+    <div
+      className={`flex ${isUser ? 'justify-end' : 'justify-start'} group`}
+      data-testid={`message-${isUser ? 'user' : 'assistant'}`}
+    >
       <div className={`flex gap-2 max-w-[85%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
         {/* Avatar (bot only) */}
         {!isUser && (
@@ -78,13 +95,31 @@ export function Message({ message }: MessageProps) {
             )}
           </div>
 
-          {/* Timestamp */}
-          <time
-            className={`text-xs text-gray-500 mt-1 ${isUser ? 'text-right' : 'text-left'}`}
-            dateTime={message.timestamp.toISOString()}
-          >
-            {formatTimestamp(message.timestamp, language)}
-          </time>
+          {/* Timestamp and Copy Button */}
+          <div className={`flex items-center gap-2 mt-1 ${isUser ? 'justify-end' : 'justify-start'}`}>
+            <time
+              className="text-xs text-gray-500"
+              dateTime={message.timestamp.toISOString()}
+            >
+              {formatTimestamp(message.timestamp, language)}
+            </time>
+
+            {/* Copy button - only on assistant messages */}
+            {!isUser && (
+              <button
+                onClick={handleCopy}
+                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600"
+                aria-label={copyLabel}
+                title={copyLabel}
+              >
+                {copied ? (
+                  <Check className="w-3 h-3 text-green-500" />
+                ) : (
+                  <Copy className="w-3 h-3" />
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -1,8 +1,9 @@
 'use client'
 
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Send } from 'lucide-react'
 import { useChatContext } from '@/components/providers/ChatProvider'
+import { VoiceInputButton } from './VoiceInputButton'
 
 export function MessageInput() {
   const { sendMessage, isTyping, language } = useChatContext()
@@ -25,7 +26,7 @@ export function MessageInput() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     const trimmed = input.trim()
     if (!trimmed || isTyping) return
 
@@ -40,11 +41,18 @@ export function MessageInput() {
     }
   }
 
+  // Handle voice transcript
+  const handleVoiceTranscript = useCallback((transcript: string) => {
+    setInput(transcript)
+    // Focus the textarea so user can edit if needed
+    textareaRef.current?.focus()
+  }, [])
+
   const charCount = input.length
   const showCounter = charCount > 400
 
   return (
-    <form 
+    <form
       onSubmit={handleSubmit}
       className="border-t border-gray-200 bg-white p-4 rounded-b-2xl"
       role="search"
@@ -67,17 +75,21 @@ export function MessageInput() {
                        max-h-32 text-gray-800 placeholder:text-gray-400"
             aria-label={placeholder}
           />
-          
+
           {showCounter && (
-            <span 
-              className={`absolute bottom-1 right-2 text-xs ${
-                charCount > 450 ? 'text-orange-500' : 'text-gray-400'
-              }`}
+            <span
+              className={`absolute bottom-1 right-2 text-xs ${charCount > 450 ? 'text-orange-500' : 'text-gray-400'
+                }`}
             >
               {charCount}/500
             </span>
           )}
         </div>
+
+        <VoiceInputButton
+          onTranscript={handleVoiceTranscript}
+          disabled={isTyping}
+        />
 
         <button
           type="submit"
