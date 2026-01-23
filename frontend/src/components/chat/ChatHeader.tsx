@@ -10,8 +10,8 @@ export function ChatHeader() {
   const { closeChat, clearHistory, language, messages } = useChatContext()
   const [showConfirm, setShowConfirm] = useState(false)
 
-  const title = 'HarliBot'
-  const subtitle = language === 'en' ? 'City of Harlingen' : 'Ciudad de Harlingen'
+  const title = 'Harlí'
+  const subtitle = language === 'en' ? 'Your City of Harlingen Assistant' : 'Tu Asistente de la Ciudad de Harlingen'
   const closeLabel = language === 'en' ? 'Close chat' : 'Cerrar chat'
   const clearLabel = language === 'en' ? 'Clear conversation' : 'Borrar conversación'
 
@@ -32,16 +32,16 @@ export function ChatHeader() {
   return (
     <header className="text-white px-4 py-4 flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-harlingen-navy to-harlingen-teal shadow-md">
       <div className="flex items-center gap-3">
-        {/* City Logo */}
-        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center p-1 shadow-sm">
-          <div className="relative w-full h-full">
-            <Image
-              src="/harlingen-logo.png"
-              alt="Harlingen"
-              fill
-              className="object-contain"
-            />
-          </div>
+        {/* Harlí Avatar */}
+        <div className="w-11 h-11 rounded-full overflow-hidden flex-shrink-0 shadow-md ring-2 ring-white/30">
+          <Image
+            src="/Harli-with-Harlingen-logo.png"
+            alt="Harlí"
+            width={44}
+            height={44}
+            className="object-cover w-full h-full"
+            priority
+          />
         </div>
 
         {/* Title */}

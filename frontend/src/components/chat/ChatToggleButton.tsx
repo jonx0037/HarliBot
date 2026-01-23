@@ -11,8 +11,8 @@ export function ChatToggleButton() {
   const unreadCount = 0
 
   const label = language === 'en'
-    ? 'Open HarliBot chat assistant'
-    : 'Abrir el asistente de chat HarliBot'
+    ? 'Open chat with Harlí'
+    : 'Abrir chat con Harlí'
 
   return (
     <button

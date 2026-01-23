@@ -43,7 +43,7 @@ const getWelcomeMessages = (language: 'en' | 'es'): Message[] => {
     return [{
       id: welcomeId,
       role: 'assistant',
-      content: '¡Bienvenido a HarliBot!\n\nSoy su asistente virtual para la Ciudad de Harlingen. Puedo ayudarle con:\n• Información sobre servicios municipales\n• Servicios públicos y facturación\n• Eventos y programas\n\nIntente preguntar "¿Cómo puedo pagar mi factura de agua?"',
+      content: '¡Hola, soy Harlí!\n\nSoy tu asistente virtual para la Ciudad de Harlingen. Puedo ayudarte con:\n• Información sobre servicios municipales\n• Servicios públicos y facturación\n• Eventos y programas\n\n¡Pregúntame lo que quieras sobre los servicios de la ciudad!',
       timestamp: new Date(),
     }]
   }
@@ -51,7 +51,7 @@ const getWelcomeMessages = (language: 'en' | 'es'): Message[] => {
   return [{
     id: welcomeId,
     role: 'assistant',
-    content: 'Welcome to HarliBot!\n\nI\'m your virtual assistant for the City of Harlingen. I can help you with:\n• City services information\n• Utilities and billing\n• Events and programs\n\nTry asking "How do I pay my water bill?"',
+    content: 'Hi, I\'m Harlí!\n\nI\'m your virtual assistant for the City of Harlingen. I can help you with:\n• City services information\n• Utilities and billing\n• Events and programs\n\nJust ask me anything about city services!',
     timestamp: new Date(),
   }]
 }

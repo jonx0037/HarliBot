@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
+import Image from 'next/image'
 import ReactMarkdown from 'react-markdown'
 import { Copy, Check, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { track } from '@vercel/analytics'
@@ -55,10 +56,16 @@ export function Message({ message }: MessageProps) {
       data-testid={`message-${isUser ? 'user' : 'assistant'}`}
     >
       <div className={`flex gap-2 max-w-[85%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
-        {/* Avatar (bot only) */}
+        {/* Harlí Avatar (bot only) */}
         {!isUser && (
-          <div className="w-8 h-8 bg-gradient-to-br from-harlingen-navy to-harlingen-teal rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
-            <span className="text-white font-bold text-sm">H</span>
+          <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 shadow-sm ring-1 ring-harlingen-navy/20">
+            <Image
+              src="/Harli-with-Harlingen-logo.png"
+              alt="Harlí"
+              width={32}
+              height={32}
+              className="object-cover w-full h-full"
+            />
           </div>
         )}
 

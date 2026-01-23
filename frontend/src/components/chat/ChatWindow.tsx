@@ -17,7 +17,7 @@ export function ChatWindow() {
                  glass-light rounded-t-2xl sm:rounded-2xl shadow-card-hover animate-slide-up z-50
                  flex flex-col overflow-hidden border border-harlingen-navy/10"
       role="region"
-      aria-label="Chat with HarliBot"
+      aria-label="Chat with Harlí"
       data-testid="chat-window"
     >
       <ChatHeader />

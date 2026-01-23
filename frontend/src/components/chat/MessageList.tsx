@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useRef } from 'react'
+import Image from 'next/image'
 import { useChatContext } from '@/components/providers/ChatProvider'
 import { Message } from './Message'
 import { TypingIndicator } from './TypingIndicator'
@@ -24,12 +25,12 @@ export function MessageList() {
   }
 
   const welcomeTitle = language === 'en'
-    ? 'Welcome to HarliBot!'
-    : '¡Bienvenido a HarliBot!'
+    ? 'Hi, I\'m Harlí!'
+    : '¡Hola, soy Harlí!'
 
   const welcomeMessage = language === 'en'
-    ? 'I can help you with:'
-    : 'Puedo ayudarte con:'
+    ? 'Your City of Harlingen assistant. I can help you with:'
+    : 'Tu asistente de la Ciudad de Harlingen. Puedo ayudarte con:'
 
   const services = language === 'en'
     ? [
@@ -46,8 +47,8 @@ export function MessageList() {
     ]
 
   const exampleQuestion = language === 'en'
-    ? 'Try asking: "How do I pay my water bill?"'
-    : 'Intenta preguntar: "¿Cómo pago mi factura de agua?"'
+    ? 'Just ask me anything about city services!'
+    : '¡Pregúntame lo que quieras sobre los servicios de la ciudad!'
 
   return (
     <div
@@ -59,8 +60,15 @@ export function MessageList() {
       {/* Welcome Message (only if no conversation history) */}
       {messages.length === 0 && (
         <div className="text-center py-8 px-4">
-          <div className="w-16 h-16 bg-harlingen-blue rounded-full mx-auto mb-4 flex items-center justify-center">
-            <span className="text-white font-bold text-2xl">H</span>
+          <div className="w-20 h-20 rounded-full mx-auto mb-4 overflow-hidden shadow-lg ring-2 ring-harlingen-navy/20">
+            <Image
+              src="/Harli-with-Harlingen-logo.png"
+              alt="Harlí"
+              width={80}
+              height={80}
+              className="object-cover w-full h-full"
+              priority
+            />
           </div>
 
           <h3 className="text-xl font-bold text-gray-800 mb-2">
