@@ -95,10 +95,11 @@ export async function searchSimilarChunks(
         const collection = await getCollection();
 
         // Query the collection
+        // Note: Language metadata is stored uppercase (EN/ES)
         const results = await collection.query({
             queryEmbeddings: [embedding],
             nResults: topK,
-            where: { language },
+            where: { language: language.toUpperCase() },
         });
 
         // Transform results to SearchResult format
