@@ -1,6 +1,7 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import { LanguageProvider } from '@/components/providers/LanguageProvider'
 import { ChatProvider } from '@/components/providers/ChatProvider'
 import ChatWidget from '@/components/chat/ChatWidget'
 import { Analytics } from '@vercel/analytics/react'
@@ -31,10 +32,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable}>
       <body className="font-sans antialiased">
-        <ChatProvider>
-          {children}
-          <ChatWidget />
-        </ChatProvider>
+        <LanguageProvider>
+          <ChatProvider>
+            {children}
+            <ChatWidget />
+          </ChatProvider>
+        </LanguageProvider>
         <Analytics />
       </body>
     </html>

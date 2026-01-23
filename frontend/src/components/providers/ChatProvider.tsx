@@ -169,6 +169,20 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setHasHydrated(true)
   }, [])
 
+  // Listen for language changes from LanguageProvider
+  useEffect(() => {
+    const handleLanguageChange = (event: CustomEvent<'en' | 'es'>) => {
+      if (event.detail !== state.language) {
+        dispatch({ type: 'SET_LANGUAGE', payload: event.detail })
+      }
+    }
+
+    window.addEventListener('language-change', handleLanguageChange as EventListener)
+    return () => {
+      window.removeEventListener('language-change', handleLanguageChange as EventListener)
+    }
+  }, [state.language])
+
   // Save conversation history to localStorage whenever it changes
   // Only save after hydration is complete to avoid overwriting saved data
   useEffect(() => {
