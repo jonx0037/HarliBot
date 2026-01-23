@@ -26,8 +26,8 @@ const BATCH_SIZE = 50 // Process 50 texts per request
 async function generateEmbeddings() {
   console.log('Loading processed chunks...')
 
-  // Load chunks
-  const inputPath = join(process.cwd(), 'data', 'processed', 'chunks.json')
+  // Load chunks - running from scripts/ so go up one level to find data/
+  const inputPath = join(process.cwd(), '..', 'data', 'processed', 'chunks.json')
 
   if (!existsSync(inputPath)) {
     console.error(`❌ File not found: ${inputPath}`)
@@ -112,8 +112,8 @@ async function generateEmbeddings() {
   console.log('\nEmbedding generation complete!')
   console.log(`Total embeddings: ${chunksWithEmbeddings.length}`)
 
-  // Save embeddings
-  const outputDir = join(process.cwd(), 'data', 'embeddings')
+  // Save embeddings - running from scripts/ so go up one level to find data/
+  const outputDir = join(process.cwd(), '..', 'data', 'embeddings')
   mkdirSync(outputDir, { recursive: true })
 
   const outputPath = join(outputDir, 'vectors.json')

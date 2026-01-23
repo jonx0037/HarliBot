@@ -7,10 +7,12 @@
         "test-chroma": "tsx test-chroma.ts",
         "scrape": "tsx scraper.ts",
         "seed-demo": "tsx seed-demo-content.ts",
+        "supplement": "tsx supplemental-content.ts",
         "process": "tsx processor.ts",
         "embed": "tsx embedder.ts",
         "index": "tsx indexer.ts",
-        "pipeline": "npm run scrape && npm run process && npm run embed && npm run index",
+        "pipeline": "npm run scrape && npm run supplement && npm run process && npm run embed && npm run index",
+        "supplement-only": "npm run supplement && npm run process && npm run embed && npm run index",
         "demo-pipeline": "npm run seed-demo && npm run process && npm run embed && npm run index"
     },
     "dependencies": {

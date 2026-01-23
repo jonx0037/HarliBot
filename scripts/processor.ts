@@ -49,11 +49,11 @@ const textSplitter = new RecursiveCharacterTextSplitter({
 
 async function processDocuments() {
   console.log('Loading scraped documents...')
-  
-  // Load raw documents
-  const inputPath = join(process.cwd(), 'data', 'raw', 'documents.json')
+
+  // Load raw documents - running from scripts/ so go up one level to find data/
+  const inputPath = join(process.cwd(), '..', 'data', 'raw', 'documents.json')
   const documents: Document[] = JSON.parse(readFileSync(inputPath, 'utf-8'))
-  
+
   console.log(`Loaded ${documents.length} documents`)
   console.log('Processing and chunking...')
 
@@ -64,10 +64,10 @@ async function processDocuments() {
     try {
       // Split document into chunks
       const textChunks = await textSplitter.splitText(doc.content)
-      
+
       const chunks: Chunk[] = textChunks.map((text, index) => {
         const chunkId = `${doc.urlHash}-chunk-${index}`
-        
+
         return {
           id: chunkId,
           documentId: doc.urlHash,
@@ -82,10 +82,10 @@ async function processDocuments() {
             sourceTitle: doc.title,
             category: doc.metadata.category,
             language: doc.metadata.language,
-            chunkPosition: index === 0 
-              ? 'start' 
-              : index === textChunks.length - 1 
-                ? 'end' 
+            chunkPosition: index === 0
+              ? 'start'
+              : index === textChunks.length - 1
+                ? 'end'
                 : 'middle',
             wordCount: text.split(/\s+/).length,
             hasContactInfo: hasPhoneOrEmail(text),
@@ -110,10 +110,10 @@ async function processDocuments() {
   console.log(`Total chunks created: ${allChunks.length}`)
   console.log(`Average chunks per document: ${(allChunks.length / documents.length).toFixed(1)}`)
 
-  // Save processed chunks
-  const outputDir = join(process.cwd(), 'data', 'processed')
+  // Save processed chunks - running from scripts/ so go up one level to find data/
+  const outputDir = join(process.cwd(), '..', 'data', 'processed')
   mkdirSync(outputDir, { recursive: true })
-  
+
   const outputPath = join(outputDir, 'chunks.json')
   writeFileSync(outputPath, JSON.stringify(allChunks, null, 2))
   console.log(`Saved to: ${outputPath}`)
@@ -131,7 +131,7 @@ function generateBreadcrumb(url: string): string {
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ')
     )
-  
+
   return ['Home', ...path].join(' > ')
 }
 
@@ -175,7 +175,7 @@ function extractKeywords(text: string, category: string): string[] {
 
 function hasPhoneOrEmail(text: string): boolean {
   return /\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/.test(text) ||
-         /[\w.+-]+@[\w.-]+\.\w+/.test(text)
+    /[\w.+-]+@[\w.-]+\.\w+/.test(text)
 }
 
 function hasAddress(text: string): boolean {
@@ -184,7 +184,7 @@ function hasAddress(text: string): boolean {
 
 function printSummary(chunks: Chunk[]) {
   console.log('\nChunk Statistics:')
-  
+
   // Language distribution
   const byLanguage = chunks.reduce((acc, chunk) => {
     acc[chunk.metadata.language] = (acc[chunk.metadata.language] || 0) + 1
@@ -199,7 +199,7 @@ function printSummary(chunks: Chunk[]) {
   }, {} as Record<string, number>)
   console.log('\nTop 5 categories:')
   Object.entries(byCategory)
-    .sort(([,a], [,b]) => b - a)
+    .sort(([, a], [, b]) => b - a)
     .slice(0, 5)
     .forEach(([cat, count]) => {
       console.log(`  ${cat}: ${count}`)

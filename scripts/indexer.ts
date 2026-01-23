@@ -23,8 +23,8 @@ interface ChunkWithEmbedding {
 async function indexEmbeddings() {
   console.log('Loading embeddings...')
 
-  // Load chunks with embeddings
-  const inputPath = join(process.cwd(), 'data', 'embeddings', 'vectors.json')
+  // Load chunks with embeddings - running from scripts/ so go up one level to find data/
+  const inputPath = join(process.cwd(), '..', 'data', 'embeddings', 'vectors.json')
   const chunks: ChunkWithEmbedding[] = JSON.parse(readFileSync(inputPath, 'utf-8'))
 
   console.log(`Loaded ${chunks.length} chunks with embeddings`)
