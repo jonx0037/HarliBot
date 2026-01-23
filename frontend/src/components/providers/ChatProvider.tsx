@@ -103,7 +103,14 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       }
 
     case 'SET_LANGUAGE':
-      return { ...state, language: action.payload }
+      // If only the welcome message exists, regenerate it in the new language
+      const isOnlyWelcome = state.messages.length === 1 &&
+        state.messages[0].id.startsWith('welcome-')
+      return {
+        ...state,
+        language: action.payload,
+        messages: isOnlyWelcome ? getWelcomeMessages(action.payload) : state.messages
+      }
 
     case 'SET_ERROR':
       return { ...state, error: action.payload }
