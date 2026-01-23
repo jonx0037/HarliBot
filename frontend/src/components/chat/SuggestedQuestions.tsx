@@ -11,13 +11,13 @@ interface SuggestedQuestionsProps {
 // Default suggestions for when we don't have context-specific ones
 const DEFAULT_SUGGESTIONS = {
     en: [
-        "How do I pay my water bill?",
-        "What are City Hall hours?",
+        "Where is the Police Department located?",
+        "Where is City Hall?",
         "How do I get a building permit?"
     ],
     es: [
-        "¿Cómo pago mi factura de agua?",
-        "¿Cuáles son los horarios del Ayuntamiento?",
+        "¿Dónde está el Departamento de Policía?",
+        "¿Dónde está el Ayuntamiento?",
         "¿Cómo obtengo un permiso de construcción?"
     ]
 }
